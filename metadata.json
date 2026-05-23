@@ -1,0 +1,6 @@
+{
+  "name": "Hitanshi Trading Corp",
+  "description": "Authorized manufacturers and wholesale traders of high-density polyethylene (HDPE), MDPE, PVC pipes, storage tanks, and industrial pumping systems.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

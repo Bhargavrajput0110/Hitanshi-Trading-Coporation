@@ -1,6 +1,15 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Globe, Mail, Phone, ChevronRight, Award, ChevronLeft, Quote } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { APIProvider, Map, AdvancedMarker, Pin } from '@vis.gl/react-google-maps';
+
+const API_KEY =
+  process.env.GOOGLE_MAPS_PLATFORM_KEY ||
+  (import.meta as any).env?.VITE_GOOGLE_MAPS_PLATFORM_KEY ||
+  (globalThis as any).GOOGLE_MAPS_PLATFORM_KEY ||
+  '';
+
+const hasValidKey = Boolean(API_KEY) && API_KEY !== 'YOUR_API_KEY' && API_KEY.trim() !== '';
 
 const testimonials = [
   {
@@ -300,6 +309,45 @@ export default function Footer() {
                 <span className="font-semibold text-white block">Official Dispatch Mail:</span>
                 rajputbhargav001@gmail.com
               </p>
+            </div>
+
+            {/* Dhule Office Google Map / Fallback section */}
+            <div className="overflow-hidden mt-3 shadow-md">
+              {hasValidKey ? (
+                <div className="w-full h-[140px] border border-white/10 relative">
+                  <APIProvider apiKey={API_KEY} version="weekly">
+                    <Map
+                      defaultCenter={{ lat: 21.0117, lng: 74.7749 }} // MIDC Avadhan, Dhule approx coordinates
+                      defaultZoom={14}
+                      mapId="DEMO_MAP_ID"
+                      internalUsageAttributionIds={['gmp_mcp_codeassist_v1_aistudio']}
+                      style={{ width: '100%', height: '100%' }}
+                      disableDefaultUI={true}
+                      zoomControl={true}
+                    >
+                      <AdvancedMarker position={{ lat: 21.0117, lng: 74.7749 }} title="Hitanshi Manufacturing Office">
+                        <Pin background="#8b7355" borderColor="#ffffff" glyphColor="#ffffff" scale={0.8} />
+                      </AdvancedMarker>
+                    </Map>
+                  </APIProvider>
+                </div>
+              ) : (
+                <div className="w-full h-[140px] bg-white/[0.03] border border-white/10 flex flex-col items-center justify-center p-3 text-center select-none relative overflow-hidden">
+                  <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff02_1px,transparent_1px),linear-gradient(to_bottom,#ffffff02_1px,transparent_1px)] bg-[size:10px_10px] pointer-events-none" />
+                  <div className="relative z-10 flex flex-col items-center gap-1">
+                    <div className="w-6 h-6 rounded-full bg-[#8b7355]/20 flex items-center justify-center border border-[#8b7355]/40 text-secondary">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-map-pin"><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/></svg>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-serif italic text-white/90">Plot 42, MIDC Phase III, Dhule</p>
+                      <p className="text-[8px] text-white/40 uppercase tracking-widest mt-0.5">Google Maps Ready</p>
+                    </div>
+                    <p className="text-[9px] text-[#8b7355] leading-normal font-sans text-center max-w-[250px]">
+                      Add <code className="bg-white/5 px-1 py-0.5 text-[8px] text-white">GOOGLE_MAPS_PLATFORM_KEY</code> to Secrets to load live radar mapping.
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Bureau markings and legal compliance statements */}

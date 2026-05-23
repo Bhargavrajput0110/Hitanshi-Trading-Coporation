@@ -104,6 +104,15 @@ export default function Header({ onSearchOpenSpecs, onOpenQuoteModal, quoteCount
               onFocus={() => setShowResults(true)}
               className="bg-transparent border-none focus:outline-none focus:ring-0 text-xs text-primary font-semibold w-40"
             />
+            {searchTerm && (
+              <button 
+                onClick={() => setSearchTerm('')}
+                className="p-1 text-on-surface hover:text-secondary cursor-pointer"
+                aria-label="Clear search"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
 
             {/* Suggestions drop */}
             {showResults && filteredProducts.length > 0 && (
@@ -183,6 +192,15 @@ export default function Header({ onSearchOpenSpecs, onOpenQuoteModal, quoteCount
               }}
               className="bg-transparent border-none focus:outline-none focus:ring-0 text-xs text-primary font-semibold w-full"
             />
+            {searchTerm && (
+              <button 
+                onClick={() => setSearchTerm('')}
+                className="p-1 text-on-surface hover:text-secondary cursor-pointer shrink-0"
+                aria-label="Clear mobile search"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
             {showResults && filteredProducts.length > 0 && (
               <div className="absolute top-11 left-0 right-0 bg-white border border-primary shadow-xl z-50 p-2 divide-y divide-outline-variant/50 max-h-56 overflow-y-auto">
                 {filteredProducts.map((p) => (
@@ -205,39 +223,39 @@ export default function Header({ onSearchOpenSpecs, onOpenQuoteModal, quoteCount
             )}
           </div>
 
-          <div className="flex flex-col gap-3 font-sans font-bold text-sm">
+          <div className="flex flex-col gap-1.5 font-sans font-bold text-sm">
             <a 
               href="#" 
               onClick={() => setMobileMenuOpen(false)}
-              className="text-secondary py-1 text-primary-color"
+              className="text-secondary py-2 border-b border-outline-variant/30 text-primary"
             >
               Home
             </a>
             <a 
               href="#portfolio-section" 
               onClick={() => setMobileMenuOpen(false)}
-              className="text-on-surface-variant py-1 hover:text-primary"
+              className="text-on-surface-variant py-2 border-b border-outline-variant/30 hover:text-primary transition-colors"
             >
               Products
             </a>
             <a 
               href="#sectors-section" 
               onClick={() => setMobileMenuOpen(false)}
-              className="text-on-surface-variant py-1 hover:text-primary"
+              className="text-on-surface-variant py-2 border-b border-outline-variant/30 hover:text-primary transition-colors"
             >
               Projects
             </a>
             <a 
               href="#calculator-section" 
               onClick={() => setMobileMenuOpen(false)}
-              className="text-on-surface-variant py-1 hover:text-primary"
+              className="text-on-surface-variant py-2 border-b border-outline-variant/30 hover:text-primary transition-colors"
             >
               Estimator / BOQ
             </a>
             <a 
               href="#footer-section" 
               onClick={() => setMobileMenuOpen(false)}
-              className="text-on-surface-variant py-1 hover:text-primary"
+              className="text-on-surface-variant py-2 hover:text-primary transition-colors"
             >
               Contact
             </a>

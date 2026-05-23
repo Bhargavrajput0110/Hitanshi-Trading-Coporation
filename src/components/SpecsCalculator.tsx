@@ -148,7 +148,7 @@ export default function SpecsCalculator({ onAddToQuote }: SpecsCalculatorProps) 
           <label className="block text-[10px] font-sans tracking-[0.15em] uppercase text-on-surface-variant mb-2.5 font-bold">
             2. Outer Diameter (OD Size)
           </label>
-          <div className="grid grid-cols-4 sm:grid-cols-8 gap-2">
+          <div className="grid grid-cols-3 min-[390px]:grid-cols-4 sm:grid-cols-8 gap-2">
             {catalog.map((pipe, idx) => (
               <button
                 key={pipe.od}
@@ -204,7 +204,7 @@ export default function SpecsCalculator({ onAddToQuote }: SpecsCalculatorProps) 
               {length.toLocaleString()} Meters
             </span>
           </div>
-          <div className="flex gap-4 items-center">
+          <div className="flex flex-col sm:flex-row gap-4 sm:items-center">
             <input
               type="range"
               min="10"
@@ -219,7 +219,7 @@ export default function SpecsCalculator({ onAddToQuote }: SpecsCalculatorProps) 
               min="1"
               value={length}
               onChange={(e) => setLength(Math.max(1, Number(e.target.value)))}
-              className="w-24 border border-outline-variant px-2 py-1.5 text-xs text-right font-sans focus:border-primary active:border-primary text-primary font-bold rounded-none"
+              className="w-full sm:w-24 border border-outline-variant px-2 py-1.5 text-xs text-right font-sans focus:border-primary active:border-primary text-primary font-bold rounded-none"
             />
           </div>
         </div>

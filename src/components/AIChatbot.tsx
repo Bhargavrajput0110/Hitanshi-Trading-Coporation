@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { MessageSquare, X, Send, Sparkles, RefreshCw, AlertCircle, Play } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { GoogleGenAI } from "@google/genai";
 
 interface Message {
   role: 'user' | 'model';
@@ -96,29 +97,89 @@ export default function AIChatbot() {
     setIsLoading(true);
 
     try {
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: updatedMessages })
-      });
+      let responseText = '';
+      let isServerError = false;
 
-      if (!response.ok) {
-        throw new Error(`Server responded with status ${response.status}`);
+      try {
+        const response = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ messages: updatedMessages })
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.error) {
+            throw new Error(data.error);
+          }
+          responseText = data.text;
+        } else {
+          isServerError = true;
+        }
+      } catch (endpointErr) {
+        // Fetch failed entirely (e.g., 404 on static deployment or network offline)
+        isServerError = true;
       }
 
-      const data = await response.json();
-      if (data.error) {
-        throw new Error(data.error);
+      if (isServerError) {
+        // Dynamic client-side fallback using @google/genai if VITE_GEMINI_API_KEY is configured on host (e.g. Netlify)
+        const clientApiKey = (import.meta as any).env.VITE_GEMINI_API_KEY;
+        if (clientApiKey) {
+          const clientAi = new GoogleGenAI({ apiKey: clientApiKey });
+          const systemInstruction = `You are "Hita", the premium AI Procurement and Technical Assistant of Hitanshi Trading Corporation.
+Your demeanor is highly professional, helpful, accurate, polite, and responsive. You represent a company that is a major, certified industrial player in HDPE and PVC pipeline manufacturing.
+
+About Hitanshi Trading Corporation:
+- Location/HQ: Plot 42, MIDC Phase III, Avadhan, Dhule, Maharashtra 424006.
+- Strategic Status: Authorized manufacturers and premium wholesale traders.
+- Main Products & Catalog:
+  1. HDPE Pipes (High-Density Polyethylene): High durability, chemical resistance, for water supply, industrial sewage, micro-irrigation, and municipal drainage. Conform to IS:4984 standards. Grades include PE80, PE100 with PN ratings (PN2.5, PN4, PN6, PN10, PN16, up to high pressure PN20).
+  2. MDPE Pipes (Medium-Density Polyethylene): For city gas distribution networks and specialized water supplies. Conform to IS:14885 standards.
+  3. PVC & UPVC Pipes: Strong, lightweight for domestic plumbing, agriculture, column/casing lines, and tube wells.
+  4. Industrial Water/Chemical Storage Tanks: Heavy-duty multi-layer polymer tanks.
+  5. Industrial Pumping Systems: Pumps and valves for large irrigation or plumbing corridors.
+- Key Trust Credentials: ISO 9001:2015 certified production processes, MSME Registered, premium grade tested materials, and rigorous Quality Assurance inspection.
+- Direct-Factory Supply & Logistics: Operations run out of our Dhule MIDC hub. We supply with rapid dispatch throughout Maharashtra (Dhule, Mumbai, Pune, Nagpur, Nashik, Aurangabad), Madhya Pradesh (Indore, Bhopal), Gujarat (Surat, Vadodara), and adjacent regional municipalities.
+- Support options: Procurement officers can add specific products/BOQ to their "Active RFQ" basket in the app interface, calculate dimensions using our built-in Specs Calculator, or chat instantly with the Sales Desk via WhatsApp at +91 7263014111.
+
+Conversation Guidelines:
+- Keep responses concise, clear, and perfectly structured with markdown list symbols or brief bullet points where appropriate.
+- When users ask about pricing or detailed quotes, instruct them to add items to their Quote Request modal in the UI or offer the quick contact numbers/WhatsApp link (+91 7263014111).
+- If asked technical questions like SDR (Standard Dimension Ratio), weight estimation, standard pipe sizes (e.g. 20mm up to 1000mm) or standards, provide precise answers based on industrial pipe specs.
+- If the user greets you or asks who you are, make a warm, executive-level introduction. Let them know you're here to assist with industrial pipeline bids and commercial procurement requisitions.`;
+
+          const contents = updatedMessages.map((m) => ({
+            role: m.role === 'user' ? 'user' as const : 'model' as const,
+            parts: [{ text: m.content }]
+          }));
+
+          const response = await clientAi.models.generateContent({
+            model: "gemini-3.5-flash",
+            contents: contents,
+            config: {
+              systemInstruction: systemInstruction,
+              temperature: 0.7,
+            },
+          });
+
+          responseText = response.text || "I apologize, I couldn't generate a response. Please try again.";
+        } else {
+          // If both the local server api and client key are missing, show the Static hosting setup instructions.
+          throw new Error("STATIC_DEPLOYMENT_SETUP_REQUIRED");
+        }
       }
 
       setMessages((prev) => [
         ...prev,
-        { role: 'model', content: data.text || "I apologize, I didn't catch that. Could you please rephrase?" }
+        { role: 'model', content: responseText || "I apologize, I didn't catch that. Could you please rephrase?" }
       ]);
     } catch (err: any) {
       console.error("AI Assistant Error:", err);
-      // Give fallback message if server-side key setup is missing or offline
-      setErrorStatus(err.message || "Connection timed out. Check if server configuration is online.");
+      if (err.message === "STATIC_DEPLOYMENT_SETUP_REQUIRED") {
+        setErrorStatus("STATIC_HOSTING");
+      } else {
+        setErrorStatus(err.message || "Connection details unavailable.");
+      }
     } finally {
       setIsLoading(false);
     }
@@ -246,13 +307,35 @@ export default function AIChatbot() {
                 </div>
               )}
 
-              {/* Error indicator */}
+              {/* Error indicator & dynamic helpful setups */}
               {errorStatus && (
-                <div className="bg-red-500/10 border border-red-500/20 p-3 rounded-lg text-red-200 text-[11px] flex gap-2 items-start leading-snug">
+                <div className="bg-red-500/10 border border-red-500/20 p-3.5 rounded-xl text-red-200 text-[11px] flex gap-2.5 items-start leading-snug">
                   <AlertCircle className="w-4 h-4 shrink-0 text-red-400 mt-0.5" />
                   <div>
-                    <p className="font-semibold">AI Assistant Offline</p>
-                    <p className="text-white/60 mt-0.5">Ready to reply. Register your <code>GEMINI_API_KEY</code> context in secrets to initialize live reasoning.</p>
+                    {errorStatus === "STATIC_HOSTING" ? (
+                      <>
+                        <p className="font-semibold text-red-300">Static / Netlify Deploy Detected</p>
+                        <p className="text-white/70 mt-1">
+                          Netlify hosts purely static files, which means our custom Node.js Express server backend (<code className="px-1 py-0.5 rounded bg-black/40 text-red-300">server.ts</code>) isn't running on your Netlify link.
+                        </p>
+                        <div className="mt-2 text-[#8b7355] font-semibold uppercase tracking-wider text-[9px]">
+                          ★ Easy Immediate Fixes:
+                        </div>
+                        <ol className="list-decimal pl-4 mt-1 space-y-1 text-white/70">
+                          <li>
+                            Open your Netlify Admin → <strong className="text-white">Site Configuration</strong> → <strong className="text-white">Environment variables</strong>
+                          </li>
+                          <li>
+                            Add a new variable: <code className="px-1 py-0.5 rounded bg-black/40 text-[#a18868] font-bold">VITE_GEMINI_API_KEY</code> with your Gemini key. This triggers Hita's secure automatic browser-fallback!
+                          </li>
+                        </ol>
+                      </>
+                    ) : (
+                      <>
+                        <p className="font-semibold">AI Assistant Offline</p>
+                        <p className="text-white/60 mt-0.5">{errorStatus}. Please register your <code className="px-1 py-0.5 rounded bg-black/40">GEMINI_API_KEY</code> context in secrets or set up client VITE fallback.</p>
+                      </>
+                    )}
                   </div>
                 </div>
               )}

@@ -9,8 +9,9 @@ import TechnicalCredentials from './components/TechnicalCredentials';
 import Footer from './components/Footer';
 import SpecsDialog from './components/SpecsDialog';
 import QuoteRequestModal from './components/QuoteRequestModal';
+import AIChatbot from './components/AIChatbot';
 import { ALL_PRODUCTS } from './data';
-import { ShoppingBag, Check, Info } from 'lucide-react';
+import { ShoppingBag, Check, Info, MessageCircle } from 'lucide-react';
 
 export default function App() {
   // Quote basket state management
@@ -85,7 +86,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-surface font-sans text-on-surface flex flex-col antialiased">
+    <div className="min-h-screen bg-surface font-sans text-on-surface flex flex-col antialiased overflow-x-hidden">
       
       {/* 1. Scroll Progress Indicator bar */}
       <div 
@@ -109,16 +110,24 @@ export default function App() {
           onOpenEstimatorClick={() => handleScrollToSection('calculator-section')}
         />
 
-        {/* Informative Quality notice */}
-        <div className="bg-[#dee8ff] py-4 px-4 sm:px-6 lg:px-8 border-b border-outline-variant">
-          <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-primary text-xs font-mono font-bold">
-            <div className="flex items-center gap-2">
-              <Info className="w-4 h-4 text-secondary shrink-0" />
-              <span>LOGISTICS ALERT: Direct-factory logistics channels active to Maharashtra (Dhule site corridors) &amp; Madhya Pradesh.</span>
+        {/* Informative Quality notice - Upgraded to elegant graphite & amber theme */}
+        <div className="bg-[#111112] py-4 px-4 sm:px-6 lg:px-8 border-b border-[#8b7355]/20 font-sans">
+          <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4 text-xs">
+            <div className="flex items-center gap-3">
+              <span className="relative flex h-2 w-2 shrink-0">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-secondary opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-secondary"></span>
+              </span>
+              <p className="text-white/80 font-medium tracking-wide">
+                <span className="text-secondary font-bold mr-1.5 font-mono uppercase tracking-wider">LOGISTICS ALERT:</span>
+                Direct-factory supply conduits are fully operational to Maharashtra (Dhule hub corridors), Madhya Pradesh, and regional municipalities.
+              </p>
             </div>
-            <span className="bg-primary text-white text-[10px] px-2.5 py-1 tracking-widest uppercase shrink-0">
-              MSME ID certified
-            </span>
+            <div className="flex items-center gap-2 shrink-0 select-none">
+              <span className="text-[9px] bg-[#8b7355]/10 text-secondary font-mono border border-[#8b7355]/30 px-2.5 py-1 uppercase tracking-widest font-extrabold">
+                MSME REGISTERED • REQUISITION DESK
+              </span>
+            </div>
           </div>
         </div>
 
@@ -145,18 +154,36 @@ export default function App() {
       </main>
 
       {/* 8. Structural footer contacts block */}
-      <Footer />
+      <Footer onOpenQuoteModal={() => setQuoteModalOpen(true)} />
 
-      {/* Floating action quote draft reminder */}
+      {/* 8.1. Premium Hita AI Procurement & Pipeline Assistant */}
+      <AIChatbot />
+
+      {/* Floating action quote draft reminder (Stacked beautifully above the WhatsApp button) */}
       {quoteItems.length > 0 && !quoteModalOpen && (
         <button 
           onClick={() => setQuoteModalOpen(true)}
-          className="fixed bottom-6 right-6 z-30 bg-[#fe6b00] text-white p-4 uppercase font-mono font-black text-xs tracking-wider shadow-2xl flex items-center gap-2 cursor-pointer hover:bg-primary transition-all duration-300 transform hover:scale-105"
+          className="fixed bottom-20 sm:bottom-24 right-4 sm:right-6 z-30 bg-[#fe6b00] text-white p-3.5 sm:p-4 uppercase font-mono font-black text-[10px] sm:text-xs tracking-wider shadow-2xl flex items-center gap-2 cursor-pointer hover:bg-primary transition-all duration-300 transform hover:scale-105"
         >
-          <ShoppingBag className="w-5 h-5 animate-bounce" />
+          <ShoppingBag className="w-4.5 h-4.5 sm:w-5 sm:h-5 animate-bounce" />
           <span>Active RFQ ({quoteItems.length})</span>
         </button>
       )}
+
+      {/* Floating persistent WhatsApp chat button for instant sales assistance */}
+      <a 
+        href="https://wa.me/917263014111?text=Hello%20Hitanshi%20Trading%20Group!%20I%20am%20interested%20in%20a%20pipeline%20or%20HDPE%20procurement%20quote."
+        target="_blank"
+        rel="noopener noreferrer"
+        className="fixed bottom-4 sm:bottom-6 right-4 sm:right-6 z-30 bg-[#25D366] hover:bg-[#20ba5a] text-white p-3 sm:p-3.5 rounded-full shadow-2xl flex items-center justify-center cursor-pointer transition-all duration-300 hover:scale-110 group"
+        title="Chat on WhatsApp with Instant Sales Desk"
+      >
+        <span className="absolute -left-36 bg-black/80 text-white text-[10px] uppercase font-mono tracking-wider px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none whitespace-nowrap">
+          Instant Sales Chat
+        </span>
+        <span className="absolute inset-0 rounded-full bg-[#25D366]/40 animate-ping" />
+        <MessageCircle className="w-6 h-6 text-white" />
+      </a>
 
       {/* Modal overlays */}
       {/* 9. Tech Specs datasheet modal */}

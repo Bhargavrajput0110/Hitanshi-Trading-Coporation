@@ -98,3 +98,38 @@
 ::-webkit-scrollbar-thumb:hover {
   background: #8b7355;
 }
+
+/* Premium Dark & Gold InfoWindow style */
+.gm-style .gm-style-iw-c {
+  background-color: #1a1a1a !important;
+  border: 1px solid rgba(139, 115, 85, 0.5) !important;
+  box-shadow: 0 10px 25px -10px rgba(0, 0, 0, 0.9) !important;
+  border-radius: 4px !important;
+  padding: 0 !important;
+}
+
+.gm-style .gm-style-iw-d {
+  overflow: auto !important;
+  max-height: none !important;
+  padding: 10px 12px !important;
+}
+
+/* Triangle/pointer customization */
+.gm-style .gm-style-iw-tc::after {
+  background-color: #1a1a1a !important;
+  box-shadow: none !important;
+}
+
+/* Close button custom styling */
+.gm-style .gm-ui-hover-effect {
+  top: 4px !important;
+  right: 4px !important;
+  color: #8b7355 !important;
+  opacity: 0.8;
+}
+.gm-style .gm-ui-hover-effect:hover {
+  opacity: 1;
+}
+.gm-style .gm-ui-hover-effect > span {
+  background-color: #8b7355 !important;
+}

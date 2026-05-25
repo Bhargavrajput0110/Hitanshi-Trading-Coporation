@@ -62,8 +62,8 @@ export default function Header({ onSearchOpenSpecs, onOpenQuoteModal, quoteCount
             <span className="font-serif italic font-medium text-xl md:text-2xl tracking-tight text-primary leading-none block">
               Hitanshi
             </span>
-            <span className="text-[9px] tracking-[0.25em] uppercase font-sans font-bold text-secondary block leading-none mt-1">
-              TRADING &amp; PUMP
+            <span className="text-[9px] tracking-[0.2em] uppercase font-sans font-bold text-secondary block leading-none mt-1">
+              TRADING CORPORATION
             </span>
           </div>
         </div>

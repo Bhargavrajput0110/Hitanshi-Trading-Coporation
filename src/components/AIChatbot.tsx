@@ -61,7 +61,7 @@ export default function AIChatbot() {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: 'model',
-      content: "Hello! I am **Hita**, your interactive AI Procurement & High-Performance Pipeline Assistant.\n\nWhether you are verifying IS standards compliance patterns, requesting specific SDR ratios, checking logistics to neighbouring states, or drafting bulk product estimations, feel free to ask!"
+      content: "Hello! I am **Hita**, your AI Pipeline Assistant. Ask me about standards compliance, material specifications, logistics, or custom quotations."
     }
   ]);
   const [inputValue, setInputValue] = useState('');

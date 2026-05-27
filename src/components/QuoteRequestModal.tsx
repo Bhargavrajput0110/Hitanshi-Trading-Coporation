@@ -71,19 +71,19 @@ export default function QuoteRequestModal({ onClose, items, onRemoveItem, onClea
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-primary/80 backdrop-blur-sm p-4 overflow-y-auto">
-      <div className="bg-surface-lowest border border-outline-variant w-full max-w-2xl shadow-2xl flex flex-col max-h-[90vh]">
+      <div className="bg-white border border-outline-variant/50 w-full max-w-2xl shadow-2xl flex flex-col max-h-[90vh] rounded-3xl overflow-hidden">
         
         {/* Visual Stripe */}
-        <div className="h-1 bg-secondary" />
+        <div className="h-1.5 bg-secondary" />
 
         {/* Modal Header */}
-        <div className="flex items-center justify-between p-6 border-b border-outline-variant">
+        <div className="flex items-center justify-between p-6 border-b border-outline-variant/50">
           <div className="flex items-center gap-3">
-            <span className="p-2 bg-secondary text-white rounded-none">
+            <span className="p-2.5 bg-secondary text-white rounded-xl">
               <FileText className="w-5 h-5 text-white" />
             </span>
-            <div>
-              <h3 className="text-xl font-light font-serif text-primary tracking-tight">
+            <div className="text-left">
+              <h3 className="text-xl font-medium font-serif text-primary tracking-tight">
                 {submitted ? 'Formal RFQ Generated' : 'Request Commercial Quotation (RFQ)'}
               </h3>
               <p className="text-[10px] text-on-surface-variant/85 font-sans tracking-wide uppercase mt-0.5">
@@ -94,7 +94,7 @@ export default function QuoteRequestModal({ onClose, items, onRemoveItem, onClea
           
           <button 
             onClick={onClose}
-            className="p-1 hover:bg-surface-high rounded-none transition-colors text-on-surface hover:text-secondary cursor-pointer"
+            className="p-1.5 hover:bg-surface-high rounded-full transition-colors text-on-surface hover:text-secondary cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -103,9 +103,9 @@ export default function QuoteRequestModal({ onClose, items, onRemoveItem, onClea
         {/* Submitted Success View */}
         {submitted ? (
           <div className="p-6 md:p-8 flex-1 overflow-y-auto space-y-6">
-            <div className="bg-emerald-50 border border-emerald-500/30 p-4 text-emerald-950 flex gap-3 text-sm rounded-none">
+            <div className="bg-emerald-50 border border-emerald-500/30 p-4 text-emerald-950 flex gap-3 text-sm rounded-2xl">
               <Check className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" />
-              <div>
+              <div className="text-left">
                 <p className="font-bold font-sans text-xs uppercase tracking-wider text-emerald-800">Specifications Compiled Successfully!</p>
                 <p className="text-xs text-emerald-900/95 mt-1 font-sans font-light leading-relaxed">
                   Your civil works pipeline requisition has been formatted under commercial ID <span className="font-semibold font-sans">{quoteNumber}</span>. Please click below to send direct specifications to Hitanshi Trading Corp on WhatsApp.
@@ -114,26 +114,26 @@ export default function QuoteRequestModal({ onClose, items, onRemoveItem, onClea
             </div>
 
             {/* Corporate Summary Sheet preview */}
-            <div className="border border-outline-variant p-6 space-y-4 shadow-sm bg-surface-low font-sans text-xs">
+            <div className="border border-outline-variant/60 p-6 space-y-4 shadow-sm bg-neutral-50/50 rounded-2xl font-sans text-xs">
               <div className="flex justify-between items-start border-b border-outline-variant/60 pb-3 text-primary">
-                <div>
-                  <h4 className="font-semibold text-sm font-sans uppercase tracking-wider">Hitanshi Trading Corp</h4>
+                <div className="text-left">
+                  <h4 className="font-bold text-sm font-sans uppercase tracking-wider">Hitanshi Trading Corp</h4>
                   <p className="text-[10px] text-on-surface-variant/85 font-sans font-light">MIDC Phase III, Dhule, MH</p>
                 </div>
                 <div className="text-right">
-                  <span className="px-2.5 py-1 bg-primary text-white font-sans text-[10px] font-bold tracking-wider select-all">{quoteNumber}</span>
+                  <span className="px-2.5 py-1 bg-primary text-white font-sans text-[10px] font-bold tracking-wider select-all rounded-md">{quoteNumber}</span>
                   <p className="text-[9px] text-on-surface-variant/85 mt-1.5 font-sans">Date: {new Date().toLocaleDateString()}</p>
                 </div>
               </div>
 
               {/* Client Info Grid */}
               <div className="grid grid-cols-2 gap-4 text-on-surface-variant/90">
-                <div>
+                <div className="text-left">
                   <span className="text-[9px] uppercase font-bold text-[#8b7355] block tracking-wider">Client Representative:</span>
                   <p className="font-semibold text-primary text-xs mt-0.5">{formData.clientName}</p>
                   <p className="text-xs mt-0.5 font-light">{formData.companyName}</p>
                 </div>
-                <div>
+                <div className="text-right sm:text-left">
                   <span className="text-[9px] uppercase font-bold text-[#8b7355] block tracking-wider">Site / Delivery Corridor:</span>
                   <p className="font-semibold text-primary text-xs mt-0.5">{formData.projectRegion} Region</p>
                   <p className="text-xs mt-0.5 font-light">Ph: {formData.phone}</p>

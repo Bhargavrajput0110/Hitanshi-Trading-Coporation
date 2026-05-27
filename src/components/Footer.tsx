@@ -319,7 +319,7 @@ export default function Footer({ onOpenQuoteModal }: FooterProps = {}) {
       >
 
         {/* Language Quick Access Toggle Bar to serve local procurement desks in Maharashtra and MP */}
-        <div className="flex flex-col sm:flex-row justify-between items-center bg-white/[0.02] border border-white/5 px-5 py-4 mb-10 gap-4">
+        <div className="flex flex-col sm:flex-row justify-between items-center bg-white/[0.02] border border-white/5 px-6 py-4 mb-10 gap-4 rounded-2xl shadow-lg">
           <div className="flex items-center gap-3">
             <Globe className="w-4.5 h-4.5 text-secondary animate-pulse" />
             <div className="text-left">
@@ -335,10 +335,10 @@ export default function Footer({ onOpenQuoteModal }: FooterProps = {}) {
             <span className="text-[10px] text-white/40 uppercase font-mono tracking-widest hidden md:inline animate-fade-in">
               {lang === 'hi' ? 'भाषा चयन:' : 'Select Language:'}
             </span>
-            <div className="flex items-center p-0.5 bg-white/5 border border-white/10 rounded-sm">
+            <div className="flex items-center p-0.5 bg-white/5 border border-white/10 rounded-xl">
               <button
                 onClick={() => changeLanguage('en')}
-                className={`px-3 py-1 font-mono text-[10px] tracking-wider uppercase transition-all duration-300 cursor-pointer ${
+                className={`px-3 py-1 font-mono text-[10px] tracking-wider uppercase transition-all duration-300 cursor-pointer rounded-lg ${
                   lang === 'en'
                     ? 'bg-[#8b7355] text-white font-bold shadow-sm'
                     : 'text-white/60 hover:text-white hover:bg-white/5'
@@ -349,7 +349,7 @@ export default function Footer({ onOpenQuoteModal }: FooterProps = {}) {
               </button>
               <button
                 onClick={() => changeLanguage('hi')}
-                className={`px-3 py-1 font-sans text-[10px] tracking-wide font-medium transition-all duration-300 cursor-pointer ${
+                className={`px-3 py-1 font-sans text-[10px] tracking-wide font-medium transition-all duration-300 cursor-pointer rounded-lg ${
                   lang === 'hi'
                     ? 'bg-[#8b7355] text-white font-bold shadow-sm'
                     : 'text-white/60 hover:text-white hover:bg-white/5'
@@ -376,14 +376,14 @@ export default function Footer({ onOpenQuoteModal }: FooterProps = {}) {
             <div className="flex gap-2">
               <button 
                 onClick={handlePrev}
-                className="p-2 border border-white/10 hover:border-secondary hover:bg-white/5 transition-colors cursor-pointer rounded-none text-white/50 hover:text-white"
+                className="p-2 border border-white/10 hover:border-secondary hover:bg-white/5 transition-all cursor-pointer rounded-full text-white/50 hover:text-white hover:scale-105"
                 aria-label="Previous testimonial"
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
               <button 
                 onClick={handleNext}
-                className="p-2 border border-white/10 hover:border-secondary hover:bg-white/5 transition-colors cursor-pointer rounded-none text-white/50 hover:text-white"
+                className="p-2 border border-white/10 hover:border-secondary hover:bg-white/5 transition-all cursor-pointer rounded-full text-white/50 hover:text-white hover:scale-105"
                 aria-label="Next testimonial"
               >
                 <ChevronRight className="w-4 h-4" />
@@ -392,7 +392,7 @@ export default function Footer({ onOpenQuoteModal }: FooterProps = {}) {
           </div>
 
           {/* Active Testimonial Card */}
-          <div className="relative overflow-hidden bg-white/[0.02] border border-white/10 p-6 md:p-8 flex flex-col md:flex-row gap-6 md:gap-8 items-stretch justify-between min-h-[220px] text-left">
+          <div className="relative overflow-hidden bg-white/[0.02] border border-white/10 p-6 md:p-8 flex flex-col md:flex-row gap-6 md:gap-8 items-stretch justify-between min-h-[220px] text-left rounded-3xl shadow-xl backdrop-blur-md">
             {/* Absolute quote background watermark */}
             <div className="absolute top-2 right-4 text-white/[0.03] font-serif text-8xl pointer-events-none select-none">
               “
@@ -411,7 +411,7 @@ export default function Footer({ onOpenQuoteModal }: FooterProps = {}) {
               >
                 <div className="flex-1 flex flex-col justify-center space-y-4">
                   <div className="flex items-center gap-3">
-                    <span className="text-[9px] bg-[#8b7355] text-white font-sans font-bold px-2.5 py-1 uppercase tracking-wider">
+                    <span className="text-[9px] bg-[#8b7355] text-white font-sans font-bold px-2.5 py-1 uppercase tracking-wider rounded-full">
                       {activeTestimonials[activeIndex].badge}
                     </span>
                     <span className="text-[10px] text-white/50 font-sans uppercase tracking-[0.1em]">
@@ -452,7 +452,7 @@ export default function Footer({ onOpenQuoteModal }: FooterProps = {}) {
                   setDirection(idx > activeIndex ? 1 : -1);
                   setActiveIndex(idx);
                 }}
-                className={`h-1 transition-all duration-300 rounded-none cursor-pointer ${
+                className={`h-1 transition-all duration-300 rounded-full cursor-pointer ${
                   idx === activeIndex ? 'w-8 bg-[#8b7355]' : 'w-2 bg-white/20 hover:bg-white/40'
                 }`}
                 aria-label={`Go to testimonial ${idx + 1}`}
@@ -684,7 +684,7 @@ export default function Footer({ onOpenQuoteModal }: FooterProps = {}) {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true, margin: "-40px" }}
                   transition={{ duration: 0.45, delay: idx * 0.08, ease: "easeOut" }}
-                  className="border border-white/10 bg-white/[0.01] hover:bg-white/[0.02] transition-colors"
+                  className="border border-white/10 bg-white/[0.01] hover:bg-white/[0.02] hover:border-secondary/40 transition-all rounded-2xl overflow-hidden"
                 >
                   <button
                     onClick={() => setOpenFaq(isOpen ? null : idx)}
@@ -728,7 +728,7 @@ export default function Footer({ onOpenQuoteModal }: FooterProps = {}) {
           </div>
 
           {/* High usability contact procurement team block underneath FAQ list */}
-          <div className="mt-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 max-w-4xl bg-white/[0.02] border border-dashed border-white/10 p-5 rounded-sm">
+          <div className="mt-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 max-w-4xl bg-white/[0.01] border border-dashed border-[#8b7355]/30 p-6 rounded-2xl shadow-lg backdrop-blur-sm">
             <div>
               <h5 className="font-serif italic text-sm text-white/90">
                 {t.stillHaveQuestions}
@@ -743,7 +743,7 @@ export default function Footer({ onOpenQuoteModal }: FooterProps = {}) {
               {onOpenQuoteModal && (
                 <button
                   onClick={onOpenQuoteModal}
-                  className="px-4 py-2.5 bg-[#8b7355] hover:bg-[#a68c6c] text-white font-sans font-bold text-[11px] uppercase tracking-wider transition-all duration-300 shadow-md cursor-pointer flex items-center gap-1.5 hover:scale-[1.02] shrink-0"
+                  className="px-4 py-2.5 bg-[#8b7355] hover:bg-[#a68c6c] text-white font-sans font-bold text-[11px] uppercase tracking-wider transition-all duration-300 shadow-md cursor-pointer flex items-center gap-1.5 hover:scale-[1.02] shrink-0 rounded-xl"
                 >
                   <span>{t.contactProcurementDesk}</span>
                   <ChevronRight className="w-3.5 h-3.5" />
@@ -751,7 +751,7 @@ export default function Footer({ onOpenQuoteModal }: FooterProps = {}) {
               )}
               <a
                 href="tel:+917263014111"
-                className="px-4 py-2.5 bg-white/5 hover:bg-white/10 text-white border border-white/10 font-sans font-bold text-[11px] uppercase tracking-wider transition-all duration-300 shadow-md flex items-center gap-1.5 hover:scale-[1.02] shrink-0"
+                className="px-4 py-2.5 bg-white/5 hover:bg-white/10 text-white border border-white/10 font-sans font-bold text-[11px] uppercase tracking-wider transition-all duration-300 shadow-md flex items-center gap-1.5 hover:scale-[1.02] shrink-0 rounded-xl"
               >
                 <Phone className="w-3.5 h-3.5 text-secondary" />
                 <span>{t.directCall}</span>

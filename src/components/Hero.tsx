@@ -1,6 +1,23 @@
-import { useEffect, useRef } from 'react';
-import { ArrowRight, Zap, Award, CheckCircle, ChevronRight, Sparkles } from 'lucide-react';
-import { motion } from 'motion/react';
+import { useState, useEffect, useRef } from 'react';
+import { 
+  ArrowRight, 
+  Zap, 
+  Award, 
+  CheckCircle, 
+  ChevronRight, 
+  Sparkles, 
+  Eye, 
+  Layers, 
+  Gauge, 
+  RotateCw, 
+  Waves, 
+  HelpCircle,
+  Activity,
+  ShieldCheck,
+  ShieldAlert
+} from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import SpecimenScanner3D from './SpecimenScanner3D';
 
 interface HeroProps {
   onExploreClick: () => void;
@@ -18,9 +35,68 @@ interface Particle {
 }
 
 export default function Hero({ onExploreClick, onOpenEstimatorClick }: HeroProps) {
+  // --- CANVAS PARTICLE STATE & REFS ---
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLElement>(null);
   const mouseRef = useRef({ x: 0, y: 0, isHovered: false });
+
+  // --- DYNAMIC SPECIMEN SIMULATOR STATES ---
+  const [selectedMaterial, setSelectedMaterial] = useState<'HDPE' | 'MDPE' | 'PVC' | 'IRON'>('HDPE');
+  const [pressureBar, setPressureBar] = useState<number>(8);
+  const [activeView, setActiveView] = useState<'isometric' | 'cross-section' | 'stress'>('isometric');
+  const [isWaterFlowing, setIsWaterFlowing] = useState<boolean>(true);
+
+  // Material Specimen DB
+  const materialsDatabase = {
+    HDPE: {
+      name: 'PE-100 HDPE Conduit',
+      standard: 'IS 4984 compliant',
+      badge: 'Municipal Grade PE-100',
+      safeBar: 16,
+      sdr: 'SDR 11 Extra-Thick',
+      outerColor: '#1a1b1e',
+      lineColor: '#2563eb',
+      wallThick: 6.6,
+      desc: 'Formulated with virgin PE-100 resins to counter water hammers and earth-shifting stress lines.'
+    },
+    MDPE: {
+      name: 'MDPE Gas Pipeline',
+      standard: 'IS 14885 compliant',
+      badge: 'Gas-Grid Premium',
+      safeBar: 10,
+      sdr: 'SDR 13.6 Yellow-Stripe',
+      outerColor: '#1c1c1f',
+      lineColor: '#eab308',
+      wallThick: 5.2,
+      desc: 'Highly flexible yellow co-extruded trunking designed for safe municipal fuel gas grids.'
+    },
+    PVC: {
+      name: 'uPVC Rigid Sewer Casing',
+      standard: 'IS 4985 compliant',
+      badge: 'Cast Heavy-Stiffness',
+      safeBar: 6,
+      sdr: 'Class 3 Rigid Core',
+      outerColor: '#30323a',
+      lineColor: '#78716c',
+      wallThick: 4.5,
+      desc: 'Lead-free unplasticized material providing excellent structural hoop stiffness underground.'
+    },
+    IRON: {
+      name: 'Ductile Iron Class K9',
+      standard: 'IS 8329 compliant',
+      badge: 'Heavy Utility Alloy',
+      safeBar: 25,
+      sdr: 'Class K9 Mortar-Lined',
+      outerColor: '#2d3039',
+      lineColor: '#818cf8',
+      wallThick: 8.8,
+      desc: 'Rugged alloy conduit protected internally with cement mortar lining to resist heavy silt wear.'
+    }
+  };
+
+  const activeMaterial = materialsDatabase[selectedMaterial];
+  const stressRatio = Math.min(100, Math.round((pressureBar / activeMaterial.safeBar) * 100));
+  const isSafetyExceeded = pressureBar > activeMaterial.safeBar;
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -31,9 +107,37 @@ export default function Hero({ onExploreClick, onOpenEstimatorClick }: HeroProps
     if (!ctx) return;
 
     let animationFrameId: number;
-    let particles: Particle[] = [];
-    const maxParticles = 55;
-    const connectionRadius = 125;
+    let yaw = 0.2;
+    let pitch = 0.15;
+    let flowAnim = 0;
+
+    // Structure flow particles travelling through 3D conduits
+    interface FlowParticle {
+      t: number;          // progression along conduit (0 to 1)
+      angle: number;      // circumferential angle
+      speed: number;      // velocity along conduit
+      spiral: number;     // spiral rotation velocity
+      conduitType: 0 | 1; // Primary or Secondary pipeline
+      radRatio: number;   // radial distance from core center (0 to 1)
+      brightness: number; // custom alpha multiplier
+      size: number;       // base radius size
+    }
+
+    const particles: FlowParticle[] = [];
+    const maxParticles = 90;
+
+    for (let i = 0; i < maxParticles; i++) {
+      particles.push({
+        t: Math.random(),
+        angle: Math.random() * Math.PI * 2,
+        speed: 0.0015 + Math.random() * 0.002,
+        spiral: 0.01 + Math.random() * 0.02,
+        conduitType: i % 2 === 0 ? 0 : 1,
+        radRatio: 0.2 + Math.random() * 0.65,
+        brightness: 0.4 + Math.random() * 0.6,
+        size: 0.6 + Math.random() * 1.5
+      });
+    }
 
     // Use ResizeObserver to ensure the canvas is responsive
     const resizeObserver = new ResizeObserver((entries) => {
@@ -41,27 +145,10 @@ export default function Hero({ onExploreClick, onOpenEstimatorClick }: HeroProps
         const { width, height } = entry.contentRect;
         canvas.width = width;
         canvas.height = height;
-        initParticles(width, height);
       }
     });
 
     resizeObserver.observe(container);
-
-    function initParticles(w: number, h: number) {
-      particles = [];
-      for (let i = 0; i < maxParticles; i++) {
-        const baseAlpha = Math.random() * 0.45 + 0.15;
-        particles.push({
-          x: Math.random() * w,
-          y: Math.random() * h,
-          vx: (Math.random() - 0.5) * 0.35,
-          vy: (Math.random() - 0.5) * 0.35,
-          radius: Math.random() * 1.8 + 0.8,
-          alpha: baseAlpha,
-          baseAlpha
-        });
-      }
-    }
 
     const handleMouseMove = (e: MouseEvent) => {
       const rect = container.getBoundingClientRect();
@@ -83,109 +170,320 @@ export default function Hero({ onExploreClick, onOpenEstimatorClick }: HeroProps
     container.addEventListener('mouseenter', handleMouseEnter);
 
     const animate = () => {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const w = canvas.width;
+      const h = canvas.height;
+      ctx.clearRect(0, 0, w, h);
+
+      // Settle scene angles into active state + slow passive loop
+      flowAnim += 0.003;
+      const baseYaw = flowAnim * 0.15;
+      const basePitch = 0.2 + Math.sin(flowAnim * 0.3) * 0.04;
+
       const isHovered = mouseRef.current.isHovered;
       const mx = mouseRef.current.x;
       const my = mouseRef.current.y;
 
-      // Draw subtle micro digital grid background on hover
-      if (isHovered) {
-        const gridSpacing = 90;
-        ctx.strokeStyle = 'rgba(139, 115, 85, 0.025)';
-        ctx.lineWidth = 0.5;
-        for (let x = 0; x < canvas.width; x += gridSpacing) {
-          ctx.beginPath();
-          ctx.moveTo(x, 0);
-          ctx.lineTo(x, canvas.height);
-          ctx.stroke();
+      const centerX = w / 2;
+      const centerY = h / 2;
+
+      // 3D Projection Engine with real Perspective Depth Shifting
+      const project = (x3d: number, y3d: number, z3d: number) => {
+        // Center-oriented rotation
+        const dx = x3d - centerX;
+        const dy = y3d - centerY;
+
+        // Apply dynamic yaw/pitch rotation around relative screen center
+        const x1 = dx * Math.cos(baseYaw) - z3d * Math.sin(baseYaw);
+        const z1 = dx * Math.sin(baseYaw) + z3d * Math.cos(baseYaw);
+
+        const y2 = dy * Math.cos(basePitch) - z1 * Math.sin(basePitch);
+        const z2 = dy * Math.sin(basePitch) + z1 * Math.cos(basePitch);
+
+        // Perspective configuration
+        const viewDistance = 1400;
+        const fovScale = 1600;
+        const scale = fovScale / (viewDistance + z2);
+
+        return {
+          sx: centerX + x1 * scale,
+          sy: centerY + y2 * scale,
+          sz: z2, // Depth tracking
+          scale,
+          orig: { x: x3d, y: y3d, z: z3d }
+        };
+      };
+
+      // Define double-helix curves for secondary/primary water and gas conduit pipelines
+      const slicesCount = 13;
+      const segmentsCount = 10;
+      const baseRadius = w > 1024 ? 110 : 65;
+
+      const primaryConduitSlices: any[] = [];
+      const secondaryConduitSlices: any[] = [];
+
+      // Generate 3D geometry vertices for pipelines
+      for (let s = 0; s < slicesCount; s++) {
+        const ratio = s / (slicesCount - 1); // 0 to 1
+        
+        // Curve centers flowing elegantly across the screen background
+        const xPosPrimary = -w * 0.1 + ratio * (w * 1.25);
+        const yPosPrimary = h * 0.45 + Math.sin(ratio * Math.PI * 2 + flowAnim) * (h * 0.18);
+        const zPosPrimary = Math.cos(ratio * Math.PI * 1.5 + flowAnim) * 160;
+
+        const xPosSecondary = -w * 0.1 + ratio * (w * 1.25);
+        const yPosSecondary = h * 0.55 + Math.cos(ratio * Math.PI * 2 + flowAnim) * (h * 0.18);
+        const zPosSecondary = Math.sin(ratio * Math.PI * 1.5 + flowAnim) * 160;
+
+        const pRing: any[] = [];
+        const sRing: any[] = [];
+
+        for (let seg = 0; seg < segmentsCount; seg++) {
+          const theta = (seg / segmentsCount) * Math.PI * 2;
+          
+          // Outer vertices relative to dynamic curves
+          const px = xPosPrimary + baseRadius * Math.cos(theta);
+          const py = yPosPrimary + baseRadius * Math.sin(theta);
+          const pz = zPosPrimary;
+
+          const sx = xPosSecondary + (baseRadius * 0.75) * Math.cos(theta + Math.PI);
+          const sy = yPosSecondary + (baseRadius * 0.75) * Math.sin(theta + Math.PI);
+          const sz = zPosSecondary;
+
+          const pProj = project(px, py, pz);
+          const sProj = project(sx, sy, sz);
+
+          // Interactive dynamic distortion ripples: Repel mesh nodes slightly away from cursor placement
+          if (isHovered) {
+            const pdx = mx - pProj.sx;
+            const pdy = my - pProj.sy;
+            const pDist = Math.sqrt(pdx * pdx + pdy * pdy);
+            if (pDist < 180) {
+              const pushFactor = (180 - pDist) / 180;
+              pProj.sx -= (pdx / pDist) * pushFactor * 14;
+              pProj.sy -= (pdy / pDist) * pushFactor * 14;
+            }
+
+            const sdx = mx - sProj.sx;
+            const sdy = my - sProj.sy;
+            const sDist = Math.sqrt(sdx * sdx + sdy * sdy);
+            if (sDist < 180) {
+              const pushFactor = (180 - sDist) / 180;
+              sProj.sx -= (sdx / sDist) * pushFactor * 12;
+              sProj.sy -= (sdy / sDist) * pushFactor * 12;
+            }
+          }
+
+          pRing.push(pProj);
+          sRing.push(sProj);
         }
-        for (let y = 0; y < canvas.height; y += gridSpacing) {
-          ctx.beginPath();
-          ctx.moveTo(0, y);
-          ctx.lineTo(canvas.width, y);
-          ctx.stroke();
+
+        primaryConduitSlices.push({
+          sliceIdx: s,
+          nodes: pRing,
+          center: project(xPosPrimary, yPosPrimary, zPosPrimary)
+        });
+
+        secondaryConduitSlices.push({
+          sliceIdx: s,
+          nodes: sRing,
+          center: project(xPosSecondary, yPosSecondary, zPosSecondary)
+        });
+      }
+
+      // Draw faint diagnostic telemetry lines/brackets at extreme edges
+      ctx.strokeStyle = 'rgba(139, 115, 85, 0.04)';
+      ctx.lineWidth = 0.5;
+      ctx.beginPath();
+      // Crosshair details
+      ctx.moveTo(centerX - 30, centerY); ctx.lineTo(centerX + 30, centerY);
+      ctx.moveTo(centerX, centerY - 30); ctx.lineTo(centerX, centerY + 30);
+      ctx.stroke();
+
+      // Top edge tracking readouts
+      ctx.fillStyle = 'rgba(139, 115, 85, 0.1)';
+      ctx.font = '7px monospace';
+      ctx.fillText(`GEO_W_SCALE_3D: ${w}X${h}`, 20, 24);
+      ctx.fillText(`YAW_OFFSET: ${baseYaw.toFixed(4)} RAD`, 20, 34);
+      ctx.fillText(`CAD_INTEGRITY: NOMINAL 100%`, 20, 44);
+
+      // RENDERING MESH FOR SECONDARY PIPELINE (thinner background pipe)
+      ctx.strokeStyle = 'rgba(139, 115, 85, 0.12)';
+      ctx.lineWidth = 0.4;
+      for (let s = 0; s < slicesCount; s++) {
+        const slice = secondaryConduitSlices[s];
+        
+        ctx.beginPath();
+        for (let seg = 0; seg < segmentsCount; seg++) {
+          const pt = slice.nodes[seg];
+          if (seg === 0) ctx.moveTo(pt.sx, pt.sy);
+          else ctx.lineTo(pt.sx, pt.sy);
+        }
+        ctx.closePath();
+        
+        // Depth-based attenuation (farther slices are dimmer)
+        const avgDepth = slice.center.sz;
+        const normDepthAlpha = Math.max(0.01, Math.min(0.25, (300 - avgDepth) / 1100));
+        ctx.strokeStyle = `rgba(139, 115, 85, ${normDepthAlpha * 0.4})`;
+        ctx.stroke();
+
+        // Connect longitude lines to subsequent slice
+        if (s < slicesCount - 1) {
+          const nextSlice = secondaryConduitSlices[s + 1];
+          for (let seg = 0; seg < segmentsCount; seg++) {
+            if (seg % 2 === 0) { // thin out wireframe lines for performance & purity
+              ctx.beginPath();
+              ctx.moveTo(slice.nodes[seg].sx, slice.nodes[seg].sy);
+              ctx.lineTo(nextSlice.nodes[seg].sx, nextSlice.nodes[seg].sy);
+              ctx.strokeStyle = `rgba(80, 80, 85, ${normDepthAlpha * 0.18})`;
+              ctx.stroke();
+            }
+          }
         }
       }
 
-      for (let i = 0; i < particles.length; i++) {
-        const p = particles[i];
-
-        let currentVx = p.vx;
-        let currentVy = p.vy;
-
+      // RENDERING MESH FOR PRIMARY PIPELINE (larger foreground pipe)
+      for (let s = 0; s < slicesCount; s++) {
+        const slice = primaryConduitSlices[s];
+        const avgDepth = slice.center.sz;
+        const normDepthAlpha = Math.max(0.01, Math.min(0.35, (400 - avgDepth) / 1000));
+        
+        // Draw slice ring
+        ctx.beginPath();
+        for (let seg = 0; seg < segmentsCount; seg++) {
+          const pt = slice.nodes[seg];
+          if (seg === 0) ctx.moveTo(pt.sx, pt.sy);
+          else ctx.lineTo(pt.sx, pt.sy);
+        }
+        ctx.closePath();
+        
+        // Highlight active rings close to cursor with warm golden aura
+        let isSliceProximity = false;
         if (isHovered) {
-          const dx = mx - p.x;
-          const dy = my - p.y;
-          const dist = Math.sqrt(dx * dx + dy * dy);
-          if (dist < 220) {
-            const force = (220 - dist) / 220;
-            currentVx += (dx / dist) * force * 0.18;
-            currentVy += (dy / dist) * force * 0.18;
-            p.alpha = Math.min(0.85, p.baseAlpha + force * 0.5);
+          const sDist = Math.sqrt((mx - slice.center.sx) ** 2 + (my - slice.center.sy) ** 2);
+          if (sDist < 160) {
+            isSliceProximity = true;
+            ctx.strokeStyle = `rgba(223, 166, 108, ${(160 - sDist) / 160 * 0.35})`;
+            ctx.lineWidth = 0.85;
           } else {
-            p.alpha = p.baseAlpha;
+            ctx.strokeStyle = `rgba(139, 115, 85, ${normDepthAlpha * 0.38})`;
+            ctx.lineWidth = 0.45;
           }
         } else {
-          p.alpha = p.baseAlpha;
+          ctx.strokeStyle = `rgba(139, 115, 85, ${normDepthAlpha * 0.28})`;
+          ctx.lineWidth = 0.4;
+        }
+        ctx.stroke();
+
+        // Connect longitudinal lines to adjacent slices
+        if (s < slicesCount - 1) {
+          const nextSlice = primaryConduitSlices[s + 1];
+          for (let seg = 0; seg < segmentsCount; seg++) {
+            ctx.beginPath();
+            ctx.moveTo(slice.nodes[seg].sx, slice.nodes[seg].sy);
+            ctx.lineTo(nextSlice.nodes[seg].sx, nextSlice.nodes[seg].sy);
+            
+            // Faintly color HDPE stripes along key axes
+            if (seg === 0 || seg === Math.floor(segmentsCount / 2)) {
+              ctx.strokeStyle = isSliceProximity 
+                ? 'rgba(223, 166, 108, 0.25)' 
+                : `rgba(139, 115, 85, ${normDepthAlpha * 0.3})`;
+              ctx.lineWidth = 1;
+            } else {
+              ctx.strokeStyle = `rgba(255, 255, 255, ${normDepthAlpha * 0.08})`;
+              ctx.lineWidth = 0.35;
+            }
+            ctx.stroke();
+          }
+        }
+      }
+
+      // STREAM AND PROGRESS PARTICLES in 3D Conduit wave trajectories
+      particles.forEach((p) => {
+        // Increment particle positioning safely
+        p.t += p.speed;
+        if (p.t > 1) {
+          p.t = 0;
+          p.angle = Math.random() * Math.PI * 2;
+        }
+        p.angle += p.spiral;
+
+        // Trace pipeline centers
+        const sliceIdxFloat = p.t * (slicesCount - 1);
+        const lowerS = Math.floor(sliceIdxFloat);
+        const upperS = Math.min(slicesCount - 1, lowerS + 1);
+        const localT = sliceIdxFloat - lowerS;
+
+        const useConduits = p.conduitType === 0 ? primaryConduitSlices : secondaryConduitSlices;
+        const lowCenter = useConduits[lowerS].center.orig;
+        const highCenter = useConduits[upperS].center.orig;
+
+        // Interpolated centerline position
+        const interpX = lowCenter.x + (highCenter.x - lowCenter.x) * localT;
+        const interpY = lowCenter.y + (highCenter.y - lowCenter.y) * localT;
+        const interpZ = lowCenter.z + (highCenter.z - lowCenter.z) * localT;
+
+        // Compute offset particle radius position around center ring direction
+        const currentRad = baseRadius * p.radRatio * (p.conduitType === 0 ? 1 : 0.75);
+        const px = interpX + currentRad * Math.cos(p.angle);
+        const py = interpY + currentRad * Math.sin(p.angle);
+        const pz = interpZ;
+
+        const projP = project(px, py, pz);
+
+        // Repel particles slightly based on hover aura
+        if (isHovered) {
+          const pdx = mx - projP.sx;
+          const pdy = my - projP.sy;
+          const pDist = Math.sqrt(pdx * pdx + pdy * pdy);
+          if (pDist < 130) {
+            const pushFactor = (130 - pDist) / 130;
+            projP.sx -= (pdx / pDist) * pushFactor * 12;
+            projP.sy -= (pdy / pDist) * pushFactor * 12;
+          }
         }
 
-        // Apply slight drag and drift
-        p.x += currentVx;
-        p.y += currentVy;
+        // Depth scale check
+        const avgDepth = projP.sz;
+        const alphaDepth = Math.max(0.05, Math.min(0.9, (450 - avgDepth) / 1000));
 
-        // Wrap around boundaries
-        if (p.x < 0) p.x = canvas.width;
-        else if (p.x > canvas.width) p.x = 0;
-
-        if (p.y < 0) p.y = canvas.height;
-        else if (p.y > canvas.height) p.y = 0;
-
-        // Draw particle
+        // Render traveling visual point
         ctx.beginPath();
-        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
-        
-        if (i % 3 === 0) {
-          ctx.fillStyle = `rgba(139, 115, 85, ${p.alpha})`; // Brand secondary gold
+        ctx.arc(projP.sx, projP.sy, p.size * projP.scale * 0.8, 0, Math.PI * 2);
+
+        // Styling flow conduits: Faint teals and warm gold pipeline emissions
+        if (p.conduitType === 0) {
+          // Primary Conduit flow -> Clean Hydrographic Teal Blue
+          ctx.fillStyle = `rgba(14, 165, 233, ${p.brightness * alphaDepth * 0.75})`;
         } else {
-          ctx.fillStyle = `rgba(255, 255, 255, ${p.alpha * 0.65})`; // Clean light gray/white
+          // Secondary Conduit flow -> Soft Conduit Amber Gold
+          ctx.fillStyle = `rgba(223, 166, 108, ${p.brightness * alphaDepth * 0.6})`;
         }
         ctx.fill();
 
-        // Connect nearby particles
-        for (let j = i + 1; j < particles.length; j++) {
-          const p2 = particles[j];
-          const dx = p.x - p2.x;
-          const dy = p.y - p2.y;
-          const dist = Math.sqrt(dx * dx + dy * dy);
-
-          if (dist < connectionRadius) {
-            const alpha = (1 - dist / connectionRadius) * 0.14 * Math.min(p.alpha, p2.alpha);
+        // Draw dynamic laser telemetry connector line from cursor to nearest foreground particle
+        if (isHovered && p.conduitType === 0 && p.brightness > 0.85) {
+          const pdx = mx - projP.sx;
+          const pdy = my - projP.sy;
+          const pDist = Math.sqrt(pdx * pdx + pdy * pdy);
+          if (pDist < 120) {
             ctx.beginPath();
-            ctx.moveTo(p.x, p.y);
-            ctx.lineTo(p2.x, p2.y);
-            ctx.strokeStyle = `rgba(139, 115, 85, ${alpha})`;
+            ctx.moveTo(mx, my);
+            ctx.lineTo(projP.sx, projP.sy);
+            ctx.strokeStyle = `rgba(223, 166, 108, ${(120 - pDist) / 120 * 0.22})`;
+            ctx.lineWidth = 0.4;
+            ctx.stroke();
+
+            // Draw a tiny target tracking circle around particle
+            ctx.beginPath();
+            ctx.arc(projP.sx, projP.sy, p.size * projP.scale * 3.5, 0, Math.PI * 2);
+            ctx.strokeStyle = `rgba(14, 165, 233, ${(120 - pDist) / 120 * 0.4})`;
             ctx.lineWidth = 0.6;
             ctx.stroke();
           }
         }
+      });
 
-        // Draw dynamic stream connection to pointer
-        if (isHovered) {
-          const dx = mx - p.x;
-          const dy = my - p.y;
-          const dist = Math.sqrt(dx * dx + dy * dy);
-          if (dist < 160) {
-            const alpha = (1 - dist / 160) * 0.22;
-            ctx.beginPath();
-            ctx.moveTo(mx, my);
-            ctx.lineTo(p.x, p.y);
-            ctx.strokeStyle = `rgba(223, 218, 211, ${alpha})`;
-            ctx.lineWidth = 0.4;
-            ctx.stroke();
-          }
-        }
-      }
-
+      // Frame continuation loop
       animationFrameId = requestAnimationFrame(animate);
     };
 
@@ -203,21 +501,21 @@ export default function Hero({ onExploreClick, onOpenEstimatorClick }: HeroProps
   return (
     <header 
       ref={containerRef}
-      className="relative pt-36 pb-28 px-4 sm:px-6 lg:px-8 border-b border-primary-container bg-[#0e0e0f] overflow-hidden"
+      className="relative pt-32 pb-24 px-4 sm:px-6 lg:px-8 border-b border-[#8b7355]/20 bg-[#0c0c0e] overflow-hidden"
     >
       
-      {/* 2. Interactive Floating Data-Flow Engineering Canvas Overlay */}
+      {/* Interactive Floating Data-Flow Engineering Canvas Overlay */}
       <canvas 
         ref={canvasRef} 
         className="absolute inset-0 z-10 select-none pointer-events-none opacity-40 transition-opacity duration-500 mix-blend-screen"
       />
 
-      {/* 1. Immersive Atmospheric Backdrop Video with Motion Zoom-In & Gentle Pulse */}
+      {/* Atmospheric Video under absolute overlays */}
       <div className="absolute inset-0 z-0 select-none pointer-events-none overflow-hidden">
         <motion.div 
           className="w-full h-full"
           initial={{ scale: 1.15, opacity: 0 }}
-          animate={{ scale: 1, opacity: 0.38 }}
+          animate={{ scale: 1, opacity: 0.3 }}
           transition={{ duration: 1.8, ease: "easeOut" }}
         >
           <video 
@@ -225,174 +523,189 @@ export default function Hero({ onExploreClick, onOpenEstimatorClick }: HeroProps
             loop 
             muted 
             playsInline
-            preload="auto"
-            className="w-full h-full object-cover object-center filter contrast-125 brightness-90 saturate-[0.85]"
+            className="w-full h-full object-cover object-center filter contrast-125 brightness-75 saturate-[0.7]"
             poster="https://images.unsplash.com/photo-1504307651254-35680f356dfd?auto=format&fit=crop&w=1920&q=80"
           >
             <source src="https://player.vimeo.com/external/371433846.sd.mp4?s=236da2f3c0227e2d09eb0482dc437a3536785dc9&profile_id=139&oauth2_token_id=57447761" type="video/mp4" />
-            <source src="https://assets.mixkit.co/videos/preview/mixkit-heavy-industry-factory-with-pipes-and-smoke-41712-large.mp4" type="video/mp4" />
             Your browser does not support the video tag.
           </video>
         </motion.div>
         
-        {/* Dynamic Multi-layered High-contrast Overlay (Deep gold highlights, charcoal washes, soft radial glow) */}
-        <div className="absolute inset-0 bg-gradient-to-r from-[#000000]/95 via-[#0e0e0f]/85 to-transparent z-10" />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#0e0e0f] via-transparent to-[#000000]/40 z-10" />
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-[#8b7355]/15 rounded-full filter blur-[120px] pointer-events-none mix-blend-screen animate-pulse" />
+        {/* Dynamic Multi-layered high-contrast overlays */}
+        <div className="absolute inset-0 bg-gradient-to-r from-[#030303]/98 via-[#0b0c0e]/90 to-transparent z-10" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#0c0c0e] via-[#0c0c0e]/40 to-[#030303]/50 z-10" />
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-[#8b7355]/10 rounded-full filter blur-[140px] pointer-events-none mix-blend-screen animate-pulse" />
       </div>
 
-      {/* Decorative Technical Digital Grid lines */}
-      <div className="absolute inset-0 z-10 opacity-15 select-none pointer-events-none industrial-grid" />
-
-      <div className="max-w-7xl mx-auto flex flex-col lg:flex-row items-center gap-12 sm:gap-16 lg:gap-20 relative z-20">
+      <div className="max-w-7xl mx-auto flex flex-col lg:flex-row items-center gap-12 sm:gap-14 lg:gap-16 relative z-20">
         
         {/* Left Column Text & Infographics with staggered micro-entrances */}
-        <div className="w-full lg:w-3/5 text-left space-y-6">
+        <div className="w-full lg:w-1/2 text-left space-y-6">
           
-          {/* Elite Badge Indicator with Amber light indicator */}
+          {/* Active specifications laboratory badge */}
           <motion.div 
             initial={{ opacity: 0, y: -15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.2 }}
-            className="inline-flex items-center bg-white/[0.04] border border-white/10 px-4 py-2 rounded-full select-none gap-2"
+            className="inline-flex items-center bg-[#8b7355]/10 border border-[#8b7355]/20 px-2.5 py-1 rounded-md select-none gap-2 z-20"
           >
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-secondary opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-secondary"></span>
-            </span>
-            <Award className="w-3.5 h-3.5 text-secondary" />
-            <span className="font-sans text-[9px] tracking-[0.25em] font-extrabold uppercase text-white/95">
-              Certified Industrial Supplier
+            <div className="w-1 h-1 rounded-full bg-[#8b7355]" />
+            <span className="font-mono text-[8px] tracking-[0.15em] font-bold uppercase text-white">
+              National Supply Conduit
             </span>
           </motion.div>
 
-          {/* Main Title Typography - Upgraded with premium high-contrast display styling */}
-          <div className="space-y-3">
+          {/* Majestic Heading Typography */}
+          <div className="space-y-1">
             <motion.h1 
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.7, delay: 0.3 }}
-              className="text-4xl sm:text-5xl lg:text-7xl font-sans tracking-tight leading-none text-white font-extrabold uppercase"
+              className="font-sans tracking-tight leading-none text-white font-bold uppercase"
             >
-              <span className="font-serif italic font-light lowercase text-[#dfdad3] block leading-normal mt-1 border-l-2 border-secondary pl-4 normal-case text-3xl sm:text-4xl lg:text-5xl">
-                22.80 Lakh Meter
+              <span className="font-serif italic font-light lowercase text-[#dfdad3] block leading-normal border-l border-[#8b7355] pl-3 normal-case text-base sm:text-lg lg:text-xl">
+                certified manufacturer &amp; wholesaler
               </span>
-              <span className="font-sans font-black text-white block tracking-tighter text-4xl sm:text-5xl lg:text-6xl mt-3 bg-gradient-to-r from-white via-white to-white/70 bg-clip-text text-transparent">
-                Infrastructure Pipes
+              <span className="font-sans font-black text-white block tracking-tighter text-2xl sm:text-3xl lg:text-[40px] mt-1.5 bg-gradient-to-r from-white via-white to-white/70 bg-clip-text text-transparent">
+                HIGH INTEGRITY PIPELINE INFRASTRUCTURE
               </span>
             </motion.h1>
           </div>
 
-          {/* Detailed Paragraph with elegant legibility */}
+          {/* Captivating details paragraph */}
           <motion.p 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.8, delay: 0.5 }}
-            className="text-sm sm:text-base text-white/70 max-w-xl leading-relaxed font-sans font-light tracking-wide pr-4"
+            className="text-xs sm:text-sm text-white/60 max-w-lg leading-relaxed font-sans font-light tracking-wide pr-2"
           >
-            Authorized Manufacturer, Wholesaler, and Government Contractor. Delivering unyielding structural permanence for state-level municipal water grids and gas networks. We couple certified laboratory precision with heavy-duty HDPE, MDPE, PVC conduits, and high-discharge Floshakti pumping networks.
+            Certified polymer conduits and pumping networks engineered for municipal waterworks, built in strict conformity with Bureau of Indian Standards (BIS) specifications.
           </motion.p>
 
           <motion.div 
             initial={{ scaleX: 0 }}
             animate={{ scaleX: 1 }}
             transition={{ duration: 0.6, delay: 0.6 }}
-            className="w-24 h-[2px] bg-secondary origin-left"
-          ></motion.div>
+            className="w-16 h-[1px] bg-[#8b7355] origin-left"
+          />
 
-          {/* Buttons and Estimation Tools panel */}
+          {/* Navigation Action Buttons Panel */}
           <motion.div 
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.7 }}
-            className="flex flex-wrap items-center gap-4 pt-2"
+            className="flex flex-wrap items-center gap-3 pt-1"
           >
             
-            {/* Smooth glowing action buttons */}
             <button
               onClick={onExploreClick}
-              className="bg-secondary hover:bg-white text-white hover:text-primary border border-secondary hover:border-white px-8 py-4 font-sans text-xs tracking-[0.2em] font-bold uppercase transition-all duration-300 cursor-pointer rounded-none flex items-center hover:scale-[1.02] shadow-lg shadow-secondary/10"
+              className="bg-[#8b7355] hover:bg-white text-white hover:text-black border border-[#8b7355] hover:border-white px-5 py-3 font-sans text-[10px] tracking-[0.15em] font-bold uppercase transition-all duration-300 cursor-pointer rounded-xl flex items-center hover:scale-[1.01] shadow-md"
             >
-              Explore Catalogue
-              <ArrowRight className="ml-2.5 w-4 h-4" />
+              Explore Catalog
+              <ArrowRight className="ml-2 w-3.5 h-3.5" />
             </button>
 
-            {/* Interactive Rapid Supply & Estimator action card */}
-            <div 
+            <button
               onClick={onOpenEstimatorClick}
-              className="flex items-center gap-3.5 px-5 py-3.5 bg-white/[0.03] hover:bg-white/[0.07] border border-white/10 hover:border-secondary/40 transition-all duration-300 cursor-pointer flex-1 sm:flex-none hover:scale-[1.01]"
-              title="Click to Open Digital Estimator Tool"
+              className="px-4 py-3 bg-white/[0.03] hover:bg-white/[0.08] text-white border border-white/5 hover:border-[#8b7355]/40 font-sans text-[10px] tracking-[0.1em] font-bold uppercase transition-all duration-300 cursor-pointer rounded-xl flex items-center gap-1.5 hover:scale-[1.01]"
             >
-              <div className="p-2.5 bg-[#8b7355] text-white rounded-none flex items-center justify-center shadow-md">
-                <Zap className="w-4 h-4 text-white fill-white" />
-              </div>
-              <div className="min-w-0 pr-3">
-                <p className="text-[8px] font-sans tracking-[0.25em] uppercase text-white/45 font-black leading-none">
-                  Rapid Calculator
-                </p>
-                <span className="text-xs font-bold text-white tracking-wide mt-1 inline-flex items-center gap-1">
-                  BOQ Estimator <ChevronRight className="w-3 h-3 text-secondary" />
-                </span>
-              </div>
-            </div>
+              <Layers className="w-3.5 h-3.5 text-[#dca66c]" />
+              Sizing Calculator
+            </button>
 
           </motion.div>
 
-          {/* Project statistics summary grid containing golden ratings */}
+          {/* Beautiful real-time delivery statistics */}
           <motion.div 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.8, delay: 0.9 }}
-            className="grid grid-cols-3 gap-2.5 sm:gap-4 pt-8 max-w-xl border-t border-white/10"
+            className="grid grid-cols-3 gap-3 pt-4 max-w-md border-t border-white/10"
           >
             <div className="flex flex-col">
-              <p className="text-2xl sm:text-4xl font-serif italic text-white leading-none">22.8<span className="text-base sm:text-xl not-italic font-normal text-secondary">L+</span></p>
-              <p className="text-[9px] text-[#8b7355] font-sans font-bold uppercase tracking-[0.2em] mt-2">Meters Shipped</p>
+              <p className="text-xl sm:text-2xl font-serif italic text-white leading-none">22.8L<span className="text-[10px] not-italic font-sans font-bold text-secondary ml-0.5">METERS</span></p>
+              <p className="text-[7.5px] text-[#8b7355] font-sans font-bold uppercase tracking-[0.15em] mt-1">Conduits Deployed</p>
             </div>
             <div className="flex flex-col">
-              <p className="text-2xl sm:text-4xl font-serif italic text-white leading-none">1,200<span className="text-base sm:text-xl not-italic font-normal text-secondary">+</span></p>
-              <p className="text-[9px] text-[#8b7355] font-sans font-bold uppercase tracking-[0.2em] mt-2">Active Grids</p>
+              <p className="text-xl sm:text-2xl font-serif italic text-white leading-none">1.2K<span className="text-[10px] not-italic font-sans font-bold text-secondary ml-0.5">GRIDS</span></p>
+              <p className="text-[7.5px] text-[#8b7355] font-sans font-bold uppercase tracking-[0.15em] mt-1">Active Networks</p>
             </div>
             <div className="flex flex-col">
-              <p className="text-2xl sm:text-4xl font-serif italic text-white leading-none">100<span className="text-base sm:text-xl not-italic font-normal text-secondary">%</span></p>
-              <p className="text-[9px] text-[#8b7355] font-sans font-bold uppercase tracking-[0.2em] mt-2">Tested Batches</p>
+              <p className="text-xl sm:text-2xl font-serif italic text-white leading-none">100%<span className="text-[10px] not-italic font-sans font-bold text-secondary ml-0.5">NABL</span></p>
+              <p className="text-[7.5px] text-[#8b7355] font-sans font-bold uppercase tracking-[0.15em] mt-1">Audit Compliant</p>
             </div>
           </motion.div>
 
         </div>
 
-        {/* Right Column Grid graphic - High elegance image borders & layered glowing shadows */}
+        {/* Right Column: Pristine Minimalist Material Standards Showcase */}
         <motion.div 
-          initial={{ opacity: 0, scale: 0.95 }}
+          initial={{ opacity: 0, scale: 0.96 }}
           animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 1, delay: 0.4 }}
-          className="w-full lg:w-2/5 flex justify-center"
+          transition={{ duration: 0.8, delay: 0.4 }}
+          className="w-full lg:w-1/2 flex justify-center h-full relative"
         >
-          <div className="relative group w-full max-w-md">
+          {/* Main interactive showcase card */}
+          <div className="bg-[#0f0f11] border border-[#8b7355]/20 rounded-3xl overflow-hidden p-6 sm:p-7 w-full max-w-xl shadow-2xl relative text-left select-none space-y-6">
             
-            {/* Background luxury glowing aura */}
-            <div className="absolute -inset-2 bg-gradient-to-r from-[#8b7355] to-secondary rounded-none opacity-20 blur-xl transition duration-1000 group-hover:opacity-40" />
-            
-            {/* The main picture with majestic layered border frame */}
-            <div className="relative bg-[#151517] border-[12px] border-[#222225] shadow-[0_20px_50px_rgba(0,0,0,0.8)] overflow-hidden aspect-square">
-              <img 
-                className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105" 
-                alt="Stacked high-density industrial polyethylene HDPE pipes highlighting professional corporate infrastructure scale" 
-                src="https://lh3.googleusercontent.com/aida-public/AB6AXuBsVXsOK9QNcE9LoVICY6kIbX0VhSLtfhD9eIpFkI2bufpiCI1IuZBOYJKSYVQgLu5SUhX0JtqH_IkX9WQTa-08X-HEIqvw-52hJ5N4hU8mH11-OP186WYA419uxfDzSgRA2CPBj4d4BAa7finzOzdN_t8IIujjlDDXk16G5lY-SzD2BUS1X06Zq6dp69ows1sxCUlb0LXJE-guudNWpTwIQLQhhVk_QYpUF67cjEm3vwDTuaQr24_JoRoDZUTxZCDUKxdnxUkwMw"
-                referrerPolicy="no-referrer"
-              />
-              
-              {/* Glossy gradient reflection panel on image hover */}
-              <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
+            {/* Top diagnostic header */}
+            <div className="flex items-center justify-between border-b border-white/5 pb-4">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 bg-[#8b7355]/10 border border-[#8b7355]/25 text-secondary rounded-xl">
+                  <Award className="w-4.5 h-4.5 text-secondary" />
+                </div>
+                <div>
+                  <span className="text-[8px] font-mono tracking-widest text-[#dca66c] uppercase font-bold block">
+                    Material Specification
+                  </span>
+                  <span className="text-xs font-serif italic text-white/95 mt-0.5 block">
+                    {activeMaterial.name}
+                  </span>
+                </div>
+              </div>
 
-              {/* Overlay quality indicator badge with animated spark */}
-              <div className="absolute bottom-4 left-4 bg-primary/95 text-white p-3 flex items-center gap-2 max-w-xs shadow-2xl font-sans border border-white/5">
-                <CheckCircle className="w-3.5 h-3.5 text-secondary flex-shrink-0" />
-                <span className="text-[9px] leading-tight font-sans font-bold tracking-[0.25em] uppercase text-white/90 inline-flex items-center gap-1">
-                  Batch Code #HDPE-9001 <Sparkles className="w-2.5 h-2.5 text-secondary" />
-                </span>
+              {/* Verified standard badge */}
+              <span className="text-[8px] font-mono bg-[#8b7355]/15 text-secondary font-bold border border-[#8b7355]/30 px-2.5 py-1 uppercase tracking-wider rounded">
+                BIS Certified
+              </span>
+            </div>
+
+            {/* Selector Material presets tabs */}
+            <div className="space-y-2">
+              <span className="text-[8px] font-mono tracking-widest text-[#dca66c] uppercase block font-bold">
+                1. Select Piping System
+              </span>
+              <div className="grid grid-cols-4 gap-2">
+                {(['HDPE', 'MDPE', 'PVC', 'IRON'] as const).map((mat) => (
+                  <button
+                    key={mat}
+                    onClick={() => {
+                      setSelectedMaterial(mat);
+                    }}
+                    className={`py-2 text-[10px] font-mono font-bold tracking-wider rounded-xl border text-center transition-all cursor-pointer ${
+                      selectedMaterial === mat
+                        ? 'bg-[#8b7355]/15 border-[#8b7355] text-secondary'
+                        : 'bg-neutral-900/60 border-white/5 text-white/50 hover:border-white/15 hover:text-white'
+                    }`}
+                  >
+                    {mat}
+                  </button>
+                ))}
               </div>
             </div>
+
+            {/* Advanced Specimen Interactive Inspection Lab HUD */}
+            <SpecimenScanner3D 
+              materialType={selectedMaterial} 
+              materialsDatabase={materialsDatabase} 
+            />
+
+            {/* Specimen Recommendation Quote */}
+            <p className="text-xs text-white/60 font-sans leading-relaxed pt-4 border-t border-white/5 select-all">
+              <span className="text-[#8b7355] font-semibold text-[10px] uppercase font-mono tracking-wider block mb-1">Application Suitability:</span>
+              {activeMaterial.desc}
+            </p>
+
           </div>
         </motion.div>
 

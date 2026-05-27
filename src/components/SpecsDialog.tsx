@@ -46,8 +46,47 @@ export default function SpecsDialog({ product, onClose, onAddToQuoteClick }: Spe
         </div>
 
         {/* Content body */}
-        <div className="p-6 overflow-y-auto space-y-8 font-sans">
+        <div className="p-6 overflow-y-auto space-y-6 font-sans">
           
+          {/* Top Info section & image side by side */}
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-stretch">
+            {product.image && (
+              <div className="md:col-span-5 h-48 md:h-auto min-h-[160px] rounded-xl overflow-hidden border border-outline-variant/60 shadow-sm relative shrink-0">
+                <img 
+                  src={product.image} 
+                  alt={product.name} 
+                  className="w-full h-full object-cover select-none pointer-events-none filter brightness-[0.95] contrast-[1.02]" 
+                  referrerPolicy="no-referrer"
+                />
+                <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-primary/80 to-transparent p-3 pt-8 pb-2 pointer-events-none">
+                  <span className="text-[10px] font-mono text-white/90 drop-shadow-sm font-bold uppercase tracking-wider">{product.name}</span>
+                </div>
+              </div>
+            )}
+            <div className={product.image ? 'md:col-span-7 flex flex-col justify-between' : 'md:col-span-12'}>
+              <div className="space-y-3">
+                <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-secondary block">Segment Overview &amp; Duty Profile</span>
+                <p className="text-xs sm:text-sm font-sans font-light text-on-surface-variant leading-relaxed">
+                  {product.description}
+                </p>
+              </div>
+              
+              <div className="pt-4 flex flex-wrap gap-2">
+                {product.badge && (
+                  <span className="text-[9px] font-mono font-bold uppercase bg-[#8b7355]/15 text-[#8b7355] border border-[#8b7355]/30 px-2.5 py-1 rounded">
+                    {product.badge}
+                  </span>
+                )}
+                <span className="text-[9px] font-mono font-bold uppercase tracking-wider bg-primary/5 text-primary border border-outline-variant/30 px-2.5 py-1 rounded">
+                  {product.category} Segment
+                </span>
+                <span className="text-[9px] font-mono font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 px-2.5 py-1 rounded animate-pulse">
+                  Govt Approved
+                </span>
+              </div>
+            </div>
+          </div>
+
           {/* Key Stats Grid */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 bg-surface-low p-5 border border-outline-variant">
             <div>

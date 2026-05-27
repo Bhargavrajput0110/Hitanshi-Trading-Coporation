@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { 
   Settings2, 
   ArrowRight, 
@@ -53,6 +53,97 @@ function use3DTilt(maxTilt = 7) {
   return { rotateX, rotateY, handleMouseMove, handleMouseLeave };
 }
 
+// Custom hook for manual touch and drag rotation of 3D wireframe models
+function useTouch3DRotation(initialX = -22, initialY = 0) {
+  const [rotation, setRotation] = useState({ x: initialX, y: initialY });
+  const [isInteracted, setIsInteracted] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const startX = useRef(0);
+  const startY = useRef(0);
+  const startRotX = useRef(initialX);
+  const startRotY = useRef(initialY);
+
+  const handleStart = (clientX: number, clientY: number) => {
+    setIsDragging(true);
+    setIsInteracted(true);
+    startX.current = clientX;
+    startY.current = clientY;
+    startRotX.current = rotation.x;
+    startRotY.current = rotation.y;
+  };
+
+  const handleMove = (clientX: number, clientY: number) => {
+    if (!isDragging) return;
+    const deltaX = clientX - startX.current;
+    const deltaY = clientY - startY.current;
+    
+    // Drag sensitivity
+    const dragSensitivity = 0.5;
+    let newY = startRotY.current + deltaX * dragSensitivity;
+    let newX = startRotX.current - deltaY * dragSensitivity;
+    
+    // Clamp X rotation to prevent flipping upside down
+    newX = Math.max(-60, Math.min(60, newX));
+    
+    setRotation({ x: newX, y: newY });
+  };
+
+  const handleEnd = () => {
+    setIsDragging(false);
+  };
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length === 1) {
+      handleStart(e.touches[0].clientX, e.touches[0].clientY);
+    }
+  };
+
+  const onTouchMove = (e: React.TouchEvent) => {
+    if (e.touches.length === 1 && isDragging) {
+      if (e.cancelable) {
+        e.preventDefault();
+      }
+      handleMove(e.touches[0].clientX, e.touches[0].clientY);
+    }
+  };
+
+  const onTouchEnd = () => {
+    handleEnd();
+  };
+
+  const onMouseDown = (e: React.MouseEvent) => {
+    handleStart(e.clientX, e.clientY);
+  };
+
+  const onMouseMove = (e: React.MouseEvent) => {
+    handleMove(e.clientX, e.clientY);
+  };
+
+  const onMouseUp = () => {
+    handleEnd();
+  };
+
+  const onMouseLeave = () => {
+    handleEnd();
+  };
+
+  return {
+    rotation,
+    isInteracted,
+    isDragging,
+    bind: {
+      onTouchStart,
+      onTouchMove,
+      onTouchEnd,
+      onMouseDown,
+      onMouseMove,
+      onMouseUp,
+      onMouseLeave,
+      style: { cursor: isDragging ? 'grabbing' : 'grab' }
+    }
+  };
+}
+
 const containerVariants = {
   hidden: { opacity: 0 },
   show: {
@@ -98,6 +189,12 @@ export default function BentoPortfolio({ onSelectProduct, onSelectProductById, o
   const motorTilt = use3DTilt(7);
   const pvcTilt = use3DTilt(7);
   const tankTilt = use3DTilt(5);
+
+  // Initialize 3D touch/drag rotation hooks for interactive previews
+  const hdpeRotation = useTouch3DRotation(-22, 0);
+  const motorRotation = useTouch3DRotation(-22, 0);
+  const pvcRotation = useTouch3DRotation(-22, 0);
+  const tankRotation = useTouch3DRotation(-22, 0);
 
   // Extract specific products
   const hdpeProduct = ALL_PRODUCTS.find(p => p.id === 'hdpe-pipes');
@@ -434,11 +531,21 @@ export default function BentoPortfolio({ onSelectProduct, onSelectProductById, o
                 </button>
 
                 {show3DHDPE ? (
-                  <div className="relative w-full h-[210px] flex items-center justify-center select-none" style={{ perspective: '800px' }} onClick={(e) => e.stopPropagation()}>
+                  <div 
+                    className="relative w-full h-[210px] flex items-center justify-center select-none touch-none" 
+                    style={{ perspective: '800px', ...hdpeRotation.bind.style }} 
+                    onClick={(e) => e.stopPropagation()}
+                    {...hdpeRotation.bind}
+                  >
                     {/* Rotating 3D CSS volumetric pipe model */}
                     <div 
-                      className="relative w-32 h-32 flex items-center justify-center animate-spin-3d"
-                      style={{ transformStyle: 'preserve-3d' }}
+                      className={`relative w-32 h-32 flex items-center justify-center ${hdpeRotation.isInteracted ? '' : 'animate-spin-3d'}`}
+                      style={{ 
+                        transformStyle: 'preserve-3d',
+                        transform: hdpeRotation.isInteracted 
+                          ? `rotateX(${hdpeRotation.rotation.x}deg) rotateY(${hdpeRotation.rotation.y}deg)` 
+                          : undefined
+                      }}
                     >
                       {Array.from({ length: 14 }).map((_, i) => {
                         const isStripe = i % 3 === 0;
@@ -481,6 +588,10 @@ export default function BentoPortfolio({ onSelectProduct, onSelectProductById, o
                           </div>
                         );
                       })}
+                    </div>
+                    {/* Interactive Mobile instructions */}
+                    <div className="absolute bottom-2.5 bg-black/85 backdrop-blur-sm border border-[#aa9273]/30 px-3 py-1 rounded-full text-[8.5px] font-mono text-secondary tracking-widest uppercase pointer-events-none select-none flex items-center gap-1.5 shadow-md">
+                      <span className="inline-block animate-pulse">🔄</span> Drag or swipe to rotate pipe in 3D
                     </div>
                   </div>
                 ) : (
@@ -716,11 +827,21 @@ export default function BentoPortfolio({ onSelectProduct, onSelectProductById, o
                 </button>
 
                 {show3DMotor ? (
-                  <div className="relative w-full h-[120px] flex items-center justify-center overflow-hidden" style={{ perspective: '600px' }} onClick={(e) => e.stopPropagation()}>
+                  <div 
+                    className="relative w-full h-[120px] flex items-center justify-center overflow-hidden touch-none" 
+                    style={{ perspective: '600px', ...motorRotation.bind.style }} 
+                    onClick={(e) => e.stopPropagation()}
+                    {...motorRotation.bind}
+                  >
                     {/* Rotating 3D CSS motor rotor */}
                     <div 
-                      className="relative w-24 h-24 flex items-center justify-center animate-spin-3d"
-                      style={{ transformStyle: 'preserve-3d' }}
+                      className={`relative w-24 h-24 flex items-center justify-center ${motorRotation.isInteracted ? '' : 'animate-spin-3d'}`}
+                      style={{ 
+                        transformStyle: 'preserve-3d',
+                        transform: motorRotation.isInteracted 
+                          ? `rotateX(${motorRotation.rotation.x}deg) rotateY(${motorRotation.rotation.y}deg)` 
+                          : undefined
+                      }}
                     >
                       {Array.from({ length: 9 }).map((_, i) => (
                         <div
@@ -745,6 +866,10 @@ export default function BentoPortfolio({ onSelectProduct, onSelectProductById, o
                           </div>
                         </div>
                       ))}
+                    </div>
+                    {/* Interactive Mobile instructions */}
+                    <div className="absolute bottom-1 bg-black/85 backdrop-blur-sm border border-[#aa9273]/30 px-2 py-0.5 rounded-full text-[8px] font-mono text-secondary tracking-widest uppercase pointer-events-none select-none flex items-center gap-1 shadow-md">
+                      <span className="inline-block animate-pulse">🔄</span> Swipe to Spin
                     </div>
                   </div>
                 ) : (
@@ -1052,12 +1177,22 @@ export default function BentoPortfolio({ onSelectProduct, onSelectProductById, o
 
                 {/* Sub-surface level mockup visuals */}
                 {show3DPVC ? (
-                  <div className="relative h-32 w-full flex items-center justify-center overflow-hidden bg-[#241a12]/20 border border-orange-950/30 rounded-xl shadow-inner" style={{ perspective: '400px' }} onClick={(e) => e.stopPropagation()}>
+                  <div 
+                    className="relative h-32 w-full flex items-center justify-center overflow-hidden bg-[#241a12]/20 border border-orange-950/30 rounded-xl shadow-inner touch-none" 
+                    style={{ perspective: '400px', ...pvcRotation.bind.style }} 
+                    onClick={(e) => e.stopPropagation()}
+                    {...pvcRotation.bind}
+                  >
                     {/* Glowing background grid lines */}
-                    <div className="absolute inset-0 opacity-[0.03] bg-[linear-gradient(rgba(255,255,255,0.15)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.15)_1px,transparent_1px)] bg-[size:10px_10px]" />
+                    <div className="absolute inset-0 opacity-[0.03] bg-[linear-gradient(rgba(255,255,255,0.15)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.15)_1px,transparent_1px)] bg-[size:10px_10px] pointer-events-none" />
                     <div 
-                      className="relative w-14 h-14 flex items-center justify-center animate-spin-3d"
-                      style={{ transformStyle: 'preserve-3d' }}
+                      className={`relative w-14 h-14 flex items-center justify-center ${pvcRotation.isInteracted ? '' : 'animate-spin-3d'}`}
+                      style={{ 
+                        transformStyle: 'preserve-3d',
+                        transform: pvcRotation.isInteracted 
+                          ? `rotateX(${pvcRotation.rotation.x}deg) rotateY(${pvcRotation.rotation.y}deg)` 
+                          : undefined
+                      }}
                     >
                       {Array.from({ length: 11 }).map((_, i) => {
                         // Calculate color gradients for stress representation
@@ -1107,6 +1242,10 @@ export default function BentoPortfolio({ onSelectProduct, onSelectProductById, o
                           </div>
                         );
                       })}
+                    </div>
+                    {/* Interactive Mobile instructions */}
+                    <div className="absolute bottom-1 bg-black/85 backdrop-blur-sm border border-[#aa9273]/30 px-2.5 py-0.5 rounded-full text-[8px] font-mono text-secondary tracking-widest uppercase pointer-events-none select-none flex items-center gap-1 shadow-md">
+                      <span className="inline-block animate-pulse">🔄</span> Swipe to Tilt Lab
                     </div>
                   </div>
                 ) : (
@@ -1557,11 +1696,21 @@ export default function BentoPortfolio({ onSelectProduct, onSelectProductById, o
                 </button>
 
                 {show3DTank ? (
-                  <div className="relative w-full h-[200px] flex items-center justify-center select-none" style={{ perspective: '800px' }} onClick={(e) => e.stopPropagation()}>
+                  <div 
+                    className="relative w-full h-[200px] flex items-center justify-center select-none touch-none" 
+                    style={{ perspective: '800px', ...tankRotation.bind.style }} 
+                    onClick={(e) => e.stopPropagation()}
+                    {...tankRotation.bind}
+                  >
                     {/* Rotating 3D CSS Water Tank Model */}
                     <div 
-                      className="relative w-24 h-24 flex items-center justify-center animate-spin-3d"
-                      style={{ transformStyle: 'preserve-3d' }}
+                      className={`relative w-24 h-24 flex items-center justify-center ${tankRotation.isInteracted ? '' : 'animate-spin-3d'}`}
+                      style={{ 
+                        transformStyle: 'preserve-3d',
+                        transform: tankRotation.isInteracted 
+                          ? `rotateX(${tankRotation.rotation.x}deg) rotateY(${tankRotation.rotation.y}deg)` 
+                          : undefined
+                      }}
                     >
                       {Array.from({ length: 11 }).map((_, i) => (
                         <div
@@ -1588,6 +1737,10 @@ export default function BentoPortfolio({ onSelectProduct, onSelectProductById, o
                           <div className="w-9 h-9 rounded-full border border-white/10 bg-neutral-900/90" />
                         </div>
                       ))}
+                    </div>
+                    {/* Interactive Mobile instructions */}
+                    <div className="absolute bottom-2.5 bg-black/85 backdrop-blur-sm border border-[#aa9273]/30 px-3 py-1 rounded-full text-[8.5px] font-mono text-secondary tracking-widest uppercase pointer-events-none select-none flex items-center gap-1.5 shadow-md">
+                      <span className="inline-block animate-pulse">🔄</span> Drag or swipe to rotate tank in 3D
                     </div>
                   </div>
                 ) : (

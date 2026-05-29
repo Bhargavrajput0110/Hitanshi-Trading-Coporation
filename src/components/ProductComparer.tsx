@@ -190,7 +190,7 @@ export default function ProductComparer({ onAddToQuote, onSelectProduct }: Produ
   ];
 
   return (
-    <section className="bg-surface py-16 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+    <section id="comparison-section" className="bg-surface py-16 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
       
       {/* Decorative Divider */}
       <div className="flex items-center justify-center gap-4 mb-12">

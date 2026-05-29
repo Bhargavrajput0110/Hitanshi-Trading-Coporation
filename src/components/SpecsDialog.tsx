@@ -1,4 +1,5 @@
-import { X, CheckCircle2, FileText, Download, Share2 } from 'lucide-react';
+import { useState } from 'react';
+import { X, CheckCircle2, FileText, Download, Share2, ZoomIn } from 'lucide-react';
 import { Product } from '../types';
 
 interface SpecsDialogProps {
@@ -8,6 +9,19 @@ interface SpecsDialogProps {
 }
 
 export default function SpecsDialog({ product, onClose, onAddToQuoteClick }: SpecsDialogProps) {
+  const [zoomState, setZoomState] = useState({ x: 50, y: 50, isZoomed: false });
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const { left, top, width, height } = e.currentTarget.getBoundingClientRect();
+    const x = ((e.clientX - left) / width) * 100;
+    const y = ((e.clientY - top) / height) * 100;
+    setZoomState({ x, y, isZoomed: true });
+  };
+
+  const handleMouseLeave = () => {
+    setZoomState({ x: 50, y: 50, isZoomed: false });
+  };
+
   // Let's create a print handler to allow generating a PDF locally
   const handlePrint = () => {
     window.print();
@@ -51,15 +65,30 @@ export default function SpecsDialog({ product, onClose, onAddToQuoteClick }: Spe
           {/* Top Info section & image side by side */}
           <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-stretch">
             {product.image && (
-              <div className="md:col-span-5 h-48 md:h-auto min-h-[160px] rounded-xl overflow-hidden border border-outline-variant/60 shadow-sm relative shrink-0">
+              <div 
+                className="md:col-span-5 h-48 md:h-48 md:max-h-[220px] rounded-xl overflow-hidden border border-outline-variant/60 shadow-sm relative shrink-0 cursor-zoom-in group select-none"
+                onMouseMove={handleMouseMove}
+                onMouseLeave={handleMouseLeave}
+              >
                 <img 
                   src={product.image} 
                   alt={product.name} 
-                  className="w-full h-full object-cover select-none pointer-events-none filter brightness-[0.95] contrast-[1.02]" 
+                  className="w-full h-full object-cover filter brightness-[0.95] contrast-[1.02] transition-transform duration-75 ease-out" 
+                  style={{
+                    transform: zoomState.isZoomed ? 'scale(2.5)' : 'scale(1)',
+                    transformOrigin: `${zoomState.x}% ${zoomState.y}%`,
+                  }}
                   referrerPolicy="no-referrer"
                 />
-                <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-primary/80 to-transparent p-3 pt-8 pb-2 pointer-events-none">
-                  <span className="text-[10px] font-mono text-white/90 drop-shadow-sm font-bold uppercase tracking-wider">{product.name}</span>
+                
+                {/* Visual HUD overlay indicating status */}
+                <div className="absolute top-2.5 right-2.5 bg-[#121216]/90 border border-white/10 px-2 py-1 rounded-lg text-[8px] font-mono font-bold tracking-wider text-white/90 shadow-lg pointer-events-none flex items-center gap-1.5 transition-all duration-200 group-hover:border-[#818cf8]/50">
+                  <ZoomIn className={`w-3.5 h-3.5 transition-colors duration-200 ${zoomState.isZoomed ? 'text-[#818cf8] animate-pulse' : 'text-zinc-400'}`} />
+                  <span>{zoomState.isZoomed ? 'MAGS 2.5X ACTIVE' : 'HOVER TO MAGNIFY'}</span>
+                </div>
+
+                <div className="absolute inset-x-0 bottom-0 bg-[#121216]/65 border-t border-white/5 backdrop-blur-[2px] p-2.5 pointer-events-none">
+                  <span className="text-[9px] font-mono text-white/90 font-bold uppercase tracking-wider">{product.name}</span>
                 </div>
               </div>
             )}

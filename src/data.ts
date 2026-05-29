@@ -134,6 +134,40 @@ export const ALL_PRODUCTS: Product[] = [
         'Built-in lifting brass-molded eyelets for convenient rigging onto high structural roofs.'
       ]
     }
+  },
+  {
+    id: 'di-pipes',
+    category: 'DI',
+    name: 'Ductile Iron (DI) Pipes & Fittings',
+    image: 'https://images.unsplash.com/photo-1542060748-10c28b629f6f?auto=format&fit=crop&w=800&q=80',
+    tagline: 'Super-strength conduits for municipal bulk pipelines',
+    description: 'Centrifugally cast Ductile Iron pipes of Class K7/K9 standards with high-durability internal cement mortar lining. Designed to master high pressure limits.',
+    badge: 'K7 / K9 Premium Class',
+    specs: {
+      standard: 'IS 8329 / 1536 / 1538',
+      pressure: 'Class K7 / K9 Heavy Duty',
+      application: 'Water Supply & Sewerage',
+      durability: '100+ Years Lifetime',
+      material: 'Spheroidal Graphite Cast Iron',
+      diameterRange: '80mm to 1200mm'
+    },
+    technicalDetails: {
+      title: 'Centrifugally Cast Ductile Iron Fittings Specification',
+      table: [
+        { label: 'Standard Rating', value: 'Indian Standards IS 8329 / IS 1536 / IS 1538' },
+        { label: 'Quality Classes', value: 'Class K7 and Class K9 high pressure ratings' },
+        { label: 'External Coating', value: 'Metallic Zinc coating with blue/black finishing layer' },
+        { label: 'Internal Lining', value: 'Portland Cement Mortar lining ensuring clean hydraulic flow' },
+        { label: 'End Connections', value: 'Spigot & Socket (Tyton push-on) or Double Flanged (DF) Joints' },
+        { label: 'Recommended Use', value: 'High dynamic bulk gravity mains & urban sewage lines' }
+      ],
+      bullets: [
+        'Superb tensile strength and elongation metrics protecting pipeline systems from high earth load shifting.',
+        'Mortar active lining creates alkaline medium shielding pipe interior from aggressive soft flow water corroding.',
+        'Extremity of impact resistance makes it perfect for overhead river crossings, bridge loops and deep burials.',
+        'Complies strictly with certified tender specifications, approved makes, and client-centric designs.'
+      ]
+    }
   }
 ];
 

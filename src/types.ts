@@ -1,4 +1,4 @@
-export type ProductSubCategory = 'HDPE' | 'MDPE' | 'PVC' | 'Motors' | 'Tanks' | 'Pumps';
+export type ProductSubCategory = 'HDPE' | 'MDPE' | 'PVC' | 'Motors' | 'Tanks' | 'Pumps' | 'DI';
 
 export interface ProductSpec {
   [key: string]: string | number | string[];

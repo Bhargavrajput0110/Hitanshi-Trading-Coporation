@@ -46,6 +46,21 @@ const BATCH_QA_TEMPLATES = [
   { batchId: 'HTG-TNK-5000', material: 'LLDPE Tank', size: '5000L', test: 'Impact deflection test', value: 'No rupture', margin: 'Accredited standard' }
 ];
 
+// Helper to generate a wavy SVG path for turbulent flow fluid streamlines
+const generateWavyPath = (yOffset: number, amplitude: number, frequencyMultiplier: number) => {
+  let path = `M 25 ${yOffset}`;
+  const steps = 16;
+  const startX = 25;
+  const endX = 215;
+  const stepSize = (endX - startX) / steps;
+  for (let i = 1; i <= steps; i++) {
+    const x = startX + i * stepSize;
+    const y = yOffset + Math.sin(i * frequencyMultiplier) * amplitude;
+    path += ` L ${x} ${y}`;
+  }
+  return path;
+};
+
 export default function InteractiveFactoryHub() {
   const [activeTab, setActiveTab] = useState<'flow' | 'lab' | 'dispatch'>('flow');
 
@@ -54,6 +69,10 @@ export default function InteractiveFactoryHub() {
   const [wallThickness, setWallThickness] = useState<number>(6.6); // SDR 17 thickness
   const [fluidSpeed, setFluidSpeed] = useState<number>(1.8); // 1.8 meters per second
   const [pipeMaterial, setPipeMaterial] = useState<'HDPE' | 'PVC' | 'IRON'>('HDPE');
+  const [showTurbulence, setShowTurbulence] = useState<boolean>(true);
+  const [viewMode, setViewMode] = useState<'tube' | 'cross'>('tube');
+  const [pipe3DRotation, setPipe3DRotation] = useState<number>(-8);
+  const dragStartRef = useRef<{ x: number; isDragging: boolean }>({ x: 0, isDragging: false });
 
   // Hazen-Williams Roughness Coefficient
   const roughnessC = useMemo(() => {
@@ -92,6 +111,25 @@ export default function InteractiveFactoryHub() {
       headLoss: Number(headLoss100m.toFixed(2))
     };
   }, [internalDiameter, fluidSpeed, roughnessC]);
+
+  // Mobile / Desktop gesture handlers for tilting the 3D pipe model on drag
+  const handlePipeDragStart = (clientX: number) => {
+    dragStartRef.current = { x: clientX, isDragging: true };
+  };
+
+  const handlePipeDragMove = (clientX: number) => {
+    if (!dragStartRef.current.isDragging) return;
+    const deltaX = clientX - dragStartRef.current.x;
+    dragStartRef.current.x = clientX;
+    setPipe3DRotation((prev) => {
+      const next = prev + deltaX * 0.45;
+      return Math.max(-45, Math.min(45, next));
+    });
+  };
+
+  const handlePipeDragEnd = () => {
+    dragStartRef.current.isDragging = false;
+  };
 
   // --- TAB 2: LIVE LABORATORY SIMULATOR STATE ---
   const [labBatchId, setLabBatchId] = useState<string>('HTG-HD100-9902');
@@ -134,7 +172,7 @@ export default function InteractiveFactoryHub() {
   const activeHub = REGIONAL_HUBS[selectedHubIndex];
 
   return (
-    <section className="py-16 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto -mt-6">
+    <section id="virtual-operations" className="py-16 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto -mt-6">
       
       {/* Container holding the high-contrast dashboard panel */}
       <div className="bg-[#121214] border border-[#8b7355]/25 rounded-3xl overflow-hidden shadow-2xl relative text-left">
@@ -318,81 +356,424 @@ export default function InteractiveFactoryHub() {
                     <span>Peak Municipal limit (4.0 m/s)</span>
                   </div>
                 </div>
+
+                {/* E. Turbulence Layer Switch */}
+                <div className="bg-[#18181b]/70 border border-[#8b7355]/20 p-3.5 rounded-xl space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                      <Tv className="w-3.5 h-3.5 text-secondary" />
+                      <span className="text-[10px] font-mono uppercase tracking-widest text-[#eae5df] font-bold">Turbulence Layer</span>
+                    </div>
+                    <button
+                      onClick={() => setShowTurbulence(!showTurbulence)}
+                      className={`relative inline-flex h-5 w-10 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                        showTurbulence ? 'bg-[#8b7355]' : 'bg-neutral-800'
+                      }`}
+                      title="Toggle Turbulence Visualization Layer"
+                    >
+                      <span
+                        className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                          showTurbulence ? 'translate-x-5' : 'translate-x-0'
+                        }`}
+                      />
+                    </button>
+                  </div>
+                  <p className="text-[9.5px] text-white/50 leading-relaxed font-sans mt-1">
+                    Enable real-time fluid vector mapping to study shear stress and boundary transition eddies based on the Hazen-Williams C-factor roughness index ({roughnessC}).
+                  </p>
+                </div>
               </div>
 
               {/* Graphical CAD pipe view & computed physics variables */}
               <div className="lg:col-span-8 grid grid-cols-1 sm:grid-cols-2 gap-6 bg-black/35 p-5 sm:p-6 rounded-2xl border border-white/5">
                 
                 {/* Visual Pipeline Schematic Flow Simulation */}
-                <div className="flex flex-col items-center justify-center p-3 relative bg-neutral-950 rounded-2xl border border-white/5 overflow-hidden">
-                  <span className="absolute top-2.5 left-2.5 text-[8px] font-mono tracking-widest text-secondary block bg-secondary/15 px-2 py-0.5 rounded leading-none uppercase font-bold">
-                    Digital Flow Sandbox
-                  </span>
-                  
-                  {/* Dynamic animating SVG pipeline */}
-                  <div className="relative w-48 h-48 flex items-center justify-center">
-                    <svg className="w-40 h-40 transform rotate-90" viewBox="0 0 100 100">
-                      <defs>
-                        {/* Linear fluid wave gradient */}
-                        <linearGradient id="fluidBlue" x1="0%" y1="0%" x2="100%" y2="100%">
-                          <stop offset="0%" stopColor="#2563eb" />
-                          <stop offset="50%" stopColor="#60a5fa" />
-                          <stop offset="100%" stopColor="#1d4ed8" />
-                        </linearGradient>
-                      </defs>
+                <div 
+                  className="flex flex-col items-center justify-center p-3 pt-12 relative bg-[#070708] rounded-2xl border border-white/5 overflow-hidden select-none touch-none"
+                  onTouchStart={(e) => {
+                    if (e.touches.length === 1) handlePipeDragStart(e.touches[0].clientX);
+                  }}
+                  onTouchMove={(e) => {
+                    if (e.touches.length === 1) handlePipeDragMove(e.touches[0].clientX);
+                  }}
+                  onTouchEnd={handlePipeDragEnd}
+                  onTouchCancel={handlePipeDragEnd}
+                  onMouseDown={(e) => handlePipeDragStart(e.clientX)}
+                  onMouseMove={(e) => handlePipeDragMove(e.clientX)}
+                  onMouseUp={handlePipeDragEnd}
+                  onMouseLeave={handlePipeDragEnd}
+                  title="Drag horizontally to tilt 3D perspective"
+                >
+                  {/* Top Header Inside flow viewport */}
+                  <div className="absolute top-2.5 inset-x-3.5 flex items-center justify-between z-10">
+                    <span className="text-[8px] font-mono tracking-widest text-[#dca66c] block bg-secondary/10 border border-[#8b7355]/30 px-2 py-0.5 rounded leading-none uppercase font-bold">
+                      Digital Flow Sandbox
+                    </span>
 
-                      {/* Main pipe wall circle */}
-                      <circle 
-                        cx="50" 
-                        cy="50" 
-                        r="45" 
-                        fill="transparent" 
-                        stroke="#22252a" 
-                        strokeWidth="8" 
-                      />
-
-                      {/* Pipe Inner Skin with fluid boundary */}
-                      <circle 
-                        cx="50" 
-                        cy="50" 
-                        r={Math.max(15, 45 - (wallThickness * 0.45))} 
-                        fill="url(#fluidBlue)" 
-                        stroke="#1e3a8a" 
-                        strokeWidth="1.5" 
-                      />
-
-                      {/* Moving flow particles animation circle dasharray */}
-                      <circle 
-                        cx="50" 
-                        cy="50" 
-                        r={Math.max(10, 41 - (wallThickness * 0.45))} 
-                        fill="transparent" 
-                        stroke="#93c5fd" 
-                        strokeWidth="1.5"
-                        strokeDasharray="5,15"
-                        style={{
-                          animation: `spin ${6 / fluidSpeed}s linear infinite`,
-                          transformOrigin: '50px 50px'
+                    {/* Miniature view mode switcher */}
+                    <div className="flex bg-neutral-900 border border-white/5 p-0.5 rounded-lg">
+                      <button
+                        onClick={(e) => { 
+                          e.stopPropagation();
+                          setViewMode('tube'); 
                         }}
-                      />
-                    </svg>
-
-                    {/* Flow speed lines horizontal dashboard backdrops overlay */}
-                    <div className="absolute inset-0 z-0 pointer-events-none opacity-30 flex flex-col justify-around py-12">
-                      <div className="w-16 h-0.5 bg-secondary animate-pulse ml-auto" style={{ animationDuration: '1.2s' }} />
-                      <div className="w-20 h-0.5 bg-white/40 animate-pulse mr-auto" style={{ animationDuration: '2s' }} />
-                    </div>
-
-                    {/* Concentric velocity ring */}
-                    <div className="absolute font-sans font-black text-[22px] text-white tracking-tighter shadow-sm flex flex-col items-center justify-center -space-y-1 select-all select-none">
-                      <span>{internalDiameter}</span>
-                      <span className="text-[10px] font-mono tracking-wider font-semibold text-secondary uppercase">Bore mm</span>
+                        className={`px-2 py-0.5 text-[8px] font-mono uppercase font-bold rounded transition-all cursor-pointer ${
+                          viewMode === 'tube' ? 'bg-[#8b7355] text-white' : 'text-white/40 hover:text-white'
+                        }`}
+                      >
+                        3D Pipe
+                      </button>
+                      <button
+                        onClick={(e) => { 
+                          e.stopPropagation();
+                          setViewMode('cross'); 
+                        }}
+                        className={`px-2 py-0.5 text-[8px] font-mono uppercase font-bold rounded transition-all cursor-pointer ${
+                          viewMode === 'cross' ? 'bg-[#8b7355] text-white' : 'text-white/40 hover:text-white'
+                        }`}
+                      >
+                        2D Bore
+                      </button>
                     </div>
                   </div>
 
-                  <div className="w-full text-center mt-3 text-[10px] font-sans text-white/50">
-                    Pipe Interior Section (OD: <span className="text-white font-bold">{odSize}mm</span> • wall: <span className="text-white font-bold">{wallThickness}mm</span>)
-                  </div>
+                  {viewMode === 'cross' ? (() => {
+                    // Normalize standard odSize (32 to 315) onto visual viewport radius map (16 to 45)
+                    const crossOuterRadius = 16 + ((odSize - 32) / (315 - 32)) * 29;
+                    const strokeWidthMultiplier = 3 + (wallThickness / 20) * 5;
+                    const crossInnerRadius = Math.max(9, crossOuterRadius - (wallThickness * 0.45));
+                    
+                    return (
+                      <div className="relative w-48 h-48 flex items-center justify-center">
+                        <svg className="w-40 h-40 transform rotate-90" viewBox="0 0 100 100">
+                          <defs>
+                            {/* Linear fluid wave gradient */}
+                            <linearGradient id="fluidBlue" x1="0%" y1="0%" x2="100%" y2="100%">
+                              <stop offset="0%" stopColor="#2563eb" />
+                              <stop offset="50%" stopColor="#60a5fa" />
+                              <stop offset="100%" stopColor="#1d4ed8" />
+                            </linearGradient>
+                          </defs>
+
+                          {/* Main pipe wall circle */}
+                          <motion.circle 
+                            cx="50" 
+                            cy="50" 
+                            animate={{ 
+                              r: crossOuterRadius,
+                              strokeWidth: strokeWidthMultiplier,
+                              stroke: pipeMaterial === 'IRON' ? '#4a3e35' : pipeMaterial === 'PVC' ? '#3b3d45' : '#1e1b18'
+                            }}
+                            transition={{ type: 'spring', stiffness: 220, damping: 20 }}
+                            fill="transparent" 
+                          />
+
+                          {/* Pipe Inner Skin with fluid boundary */}
+                          <motion.circle 
+                            cx="50" 
+                            cy="50" 
+                            animate={{ r: crossInnerRadius }} 
+                            transition={{ type: 'spring', stiffness: 220, damping: 20 }}
+                            fill="url(#fluidBlue)" 
+                            stroke="#1e3a8a" 
+                            strokeWidth="1.5" 
+                          />
+
+                          {/* Moving flow particles animation circle dasharray */}
+                          <motion.circle 
+                            cx="50" 
+                            cy="50" 
+                            animate={{ r: Math.max(6, crossInnerRadius - 2.5) }} 
+                            transition={{ type: 'spring', stiffness: 220, damping: 20 }}
+                            fill="transparent" 
+                            stroke="#93c5fd" 
+                            strokeWidth="1.5"
+                            strokeDasharray="5,15"
+                            style={{
+                              animation: `spin ${6 / fluidSpeed}s linear infinite`,
+                              transformOrigin: '50px 50px'
+                            }}
+                          />
+
+                          {/* Boundary Layer Turbulence Layer Overlay */}
+                          {showTurbulence && (
+                            <>
+                              {/* Layer representing Shear Stress friction zone */}
+                              <motion.circle 
+                                cx="50" 
+                                cy="50" 
+                                animate={{ r: Math.max(7, crossInnerRadius - 1) }} 
+                                transition={{ type: 'spring', stiffness: 220, damping: 20 }}
+                                fill="none" 
+                                stroke={roughnessC === 100 ? '#f59e0b' : '#34d399'} 
+                                strokeWidth="2.5" 
+                                strokeDasharray="2, 6"
+                                className="animate-spin"
+                                style={{ animationDuration: roughnessC === 100 ? '5s' : '15s', opacity: 0.7 }}
+                              />
+                              {/* In rough cast iron, add severe shear stress vectors */}
+                              {roughnessC === 100 && (
+                                <>
+                                  <motion.circle 
+                                    cx="50" 
+                                    cy="50" 
+                                    animate={{ r: Math.max(8, crossInnerRadius + 1) }} 
+                                    transition={{ type: 'spring', stiffness: 220, damping: 20 }}
+                                    fill="none" 
+                                    stroke="#ef4444" 
+                                    strokeWidth="0.8" 
+                                    strokeDasharray="1, 8" 
+                                    className="animate-spin" 
+                                    style={{ animationDuration: '3s', animationDirection: 'reverse' }} 
+                                  />
+                                  <motion.circle 
+                                    cx="50" 
+                                    cy="50" 
+                                    animate={{ r: Math.max(5, crossInnerRadius - 3.5) }} 
+                                    transition={{ type: 'spring', stiffness: 220, damping: 20 }}
+                                    fill="none" 
+                                    stroke="#fb923c" 
+                                    strokeWidth="0.8" 
+                                    strokeDasharray="3, 7" 
+                                    className="animate-spin" 
+                                    style={{ animationDuration: '4s' }} 
+                                  />
+                                </>
+                              )}
+                            </>
+                          )}
+                        </svg>
+
+                        {/* Concentric velocity ring */}
+                        <div className="absolute font-sans font-black text-[22px] text-white tracking-tighter shadow-sm flex flex-col items-center justify-center -space-y-1 select-all select-none pointer-events-none">
+                          <span>{internalDiameter}</span>
+                          <span className="text-[10px] font-mono tracking-wider font-semibold text-secondary uppercase">Bore mm</span>
+                        </div>
+                      </div>
+                    );
+                  })() : (
+                    /* Spectacular 3D longitudinal pipe model with dragging features */
+                    <div className="relative w-full h-48 flex items-center justify-center pt-2">
+                      <svg className="w-full h-40 max-w-[260px] drop-shadow-lg" viewBox="0 0 240 120" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                          <linearGradient id="pipeWallGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                            {pipeMaterial === 'IRON' ? (
+                              <>
+                                <stop offset="0%" stopColor="#2c241e" />
+                                <stop offset="30%" stopColor="#4a3e35" />
+                                <stop offset="70%" stopColor="#1c1611" />
+                                <stop offset="100%" stopColor="#0f0c0a" />
+                              </>
+                            ) : (
+                              <>
+                                <stop offset="0%" stopColor="#24252a" />
+                                <stop offset="30%" stopColor="#3b3d45" />
+                                <stop offset="70%" stopColor="#17181c" />
+                                <stop offset="100%" stopColor="#0d0e10" />
+                              </>
+                            )}
+                          </linearGradient>
+                          <linearGradient id="waterFlowGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                            <stop offset="0%" stopColor="#2563eb" stopOpacity="0.8" />
+                            <stop offset="50%" stopColor="#60a5fa" stopOpacity="0.95" />
+                            <stop offset="100%" stopColor="#1d4ed8" stopOpacity="0.8" />
+                          </linearGradient>
+                          <linearGradient id="turbulentSpiralsGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                            <stop offset="0%" stopColor="#f59e0b" />
+                            <stop offset="100%" stopColor="#ef4444" />
+                          </linearGradient>
+                        </defs>
+
+                        <style>{`
+                          @keyframes pathOffset {
+                            from { stroke-dashoffset: 120; }
+                            to { stroke-dashoffset: 0; }
+                          }
+                          .stream-laminar-path {
+                            stroke-dasharray: 24, 16;
+                            animation: pathOffset var(--stream-speed, 2s) linear infinite;
+                          }
+                          .stream-turbulent-path {
+                            stroke-dasharray: 10, 8;
+                            animation: pathOffset var(--stream-speed, 1.4s) linear infinite;
+                          }
+                        `}</style>
+
+                        {/* Main Pipe structure with touch drag rotation tilt angle */}
+                        <g transform={`rotate(${pipe3DRotation} 120 60)`}>
+                          {/* Calculations for local geometric dimensions */}
+                          {(() => {
+                            const rOuter = Math.min(38, Math.max(15, odSize * 0.12));
+                            const rInner = Math.min(35, Math.max(10, (odSize - 2 * wallThickness) * 0.12));
+                            const streamSpeed = Math.max(0.4, 4.5 / fluidSpeed);
+
+                            // Wave params for Iron (low C-factor = 100), straight for HDPE/PVC (C = 150)
+                            const isTurbulent = showTurbulence && roughnessC === 100;
+                            const amp = isTurbulent ? 4.5 : 0;
+                            
+                            return (
+                              <>
+                                {/* 3D Outer Cylinder Body */}
+                                <motion.path 
+                                  animate={{
+                                    d: `
+                                      M 25 ${60 - rOuter}
+                                      L 215 ${60 - rOuter}
+                                      A 8 ${rOuter} 0 0 1 215 ${60 + rOuter}
+                                      L 25 ${60 + rOuter}
+                                      A 8 ${rOuter} 0 0 1 25 ${60 - rOuter}
+                                      Z
+                                    `
+                                  }}
+                                  transition={{ type: 'spring', stiffness: 220, damping: 20 }}
+                                  fill="url(#pipeWallGrad)" 
+                                  stroke={pipeMaterial === 'IRON' ? '#aa9273' : '#4b5563'} 
+                                  strokeWidth="1.5"
+                                  opacity="0.9"
+                                />
+
+                                {/* Transparent Inner Bore fluid channel background */}
+                                <motion.path 
+                                  animate={{
+                                    d: `
+                                      M 25 ${60 - rInner}
+                                      L 215 ${60 - rInner}
+                                      A 6 ${rInner} 0 0 1 215 ${60 + rInner}
+                                      L 25 ${60 + rInner}
+                                      A 6 ${rInner} 0 0 1 25 ${60 - rInner}
+                                      Z
+                                    `
+                                  }}
+                                  transition={{ type: 'spring', stiffness: 220, damping: 20 }}
+                                  fill="url(#waterFlowGrad)" 
+                                  opacity="0.3" 
+                                />
+
+                                {/* Moving streamlines dynamically calculated using sine-wave helper */}
+                                <g style={{ '--stream-speed': `${streamSpeed}s` } as React.CSSProperties}>
+                                  {/* Streamline 1 (Upper channel) */}
+                                  <motion.path 
+                                    animate={{ d: generateWavyPath(60 - rInner * 0.5, amp, 1.2) }}
+                                    transition={{ type: 'spring', stiffness: 220, damping: 20 }}
+                                    fill="none" 
+                                    stroke={isTurbulent ? '#fbbf24' : '#93c5fd'} 
+                                    strokeWidth="1.5" 
+                                    className={isTurbulent ? 'stream-turbulent-path' : 'stream-laminar-path'}
+                                  />
+                                  
+                                  {/* Streamline 2 (Core centerline) */}
+                                  <motion.path 
+                                    animate={{ d: generateWavyPath(60, amp * 0.3, 1.8) }}
+                                    transition={{ type: 'spring', stiffness: 220, damping: 20 }}
+                                    fill="none" 
+                                    stroke={isTurbulent ? '#f59e0b' : '#38bdf8'} 
+                                    strokeWidth="2" 
+                                    className={isTurbulent ? 'stream-turbulent-path' : 'stream-laminar-path'}
+                                  />
+
+                                  {/* Streamline 3 (Lower channel) */}
+                                  <motion.path 
+                                    animate={{ d: generateWavyPath(60 + rInner * 0.5, amp, 1.2) }}
+                                    transition={{ type: 'spring', stiffness: 220, damping: 20 }}
+                                    fill="none" 
+                                    stroke={isTurbulent ? '#fbbf24' : '#93c5fd'} 
+                                    strokeWidth="1.5" 
+                                    className={isTurbulent ? 'stream-turbulent-path' : 'stream-laminar-path'}
+                                  />
+                                </g>
+
+                                {/* Swirling Turbulence boundary-layer eddies - only if active and material is Iron */}
+                                {isTurbulent && (
+                                  <>
+                                    {/* Eddy vortex 1 (Upper Left) */}
+                                    <motion.g 
+                                      animate={{ transform: `translate(60, ${60 - rInner + 3})` }}
+                                      transition={{ type: 'spring', stiffness: 220, damping: 20 }}
+                                    >
+                                      <circle cx="0" cy="0" r="4.5" fill="none" stroke="url(#turbulentSpiralsGrad)" strokeWidth="1" strokeDasharray="3, 3" className="animate-spin" style={{ animationDuration: '1.5s' }} />
+                                      <circle cx="0" cy="0" r="1.5" fill="#ef4444" />
+                                    </motion.g>
+                                    
+                                    {/* Eddy vortex 2 (Lower Middle) */}
+                                    <motion.g 
+                                      animate={{ transform: `translate(120, ${60 + rInner - 3})` }}
+                                      transition={{ type: 'spring', stiffness: 220, damping: 20 }}
+                                    >
+                                      <circle cx="0" cy="0" r="4.5" fill="none" stroke="url(#turbulentSpiralsGrad)" strokeWidth="1" strokeDasharray="3, 3" className="animate-spin" style={{ animationDuration: '1s', animationDirection: 'reverse' }} />
+                                      <circle cx="0" cy="0" r="1.5" fill="#f59e0b" />
+                                    </motion.g>
+
+                                    {/* Eddy vortex 3 (Upper Right) */}
+                                    <motion.g 
+                                      animate={{ transform: `translate(170, ${60 - rInner + 3})` }}
+                                      transition={{ type: 'spring', stiffness: 220, damping: 20 }}
+                                    >
+                                      <circle cx="0" cy="0" r="4" fill="none" stroke="url(#turbulentSpiralsGrad)" strokeWidth="1" strokeDasharray="2, 2" className="animate-spin" style={{ animationDuration: '1.2s' }} />
+                                      <circle cx="0" cy="0" r="1" fill="#ef4444" />
+                                    </motion.g>
+                                  </>
+                                )}
+
+                                {/* Inner Bore structural circular ends overlay to prove hollowing */}
+                                <motion.ellipse 
+                                  cx="25" 
+                                  cy="60" 
+                                  rx="6" 
+                                  animate={{ ry: rInner }} 
+                                  transition={{ type: 'spring', stiffness: 220, damping: 20 }}
+                                  fill="none" 
+                                  stroke="#2563eb" 
+                                  strokeWidth="1" 
+                                  opacity="0.4" 
+                                />
+                                <motion.ellipse 
+                                  cx="215" 
+                                  cy="60" 
+                                  rx="6" 
+                                  animate={{ ry: rInner }} 
+                                  transition={{ type: 'spring', stiffness: 220, damping: 20 }}
+                                  fill="none" 
+                                  stroke="#2563eb" 
+                                  strokeWidth="1.2" 
+                                  opacity="0.5" 
+                                />
+                              </>
+                            );
+                          })()}
+                        </g>
+                      </svg>
+
+                      {/* Micro interaction swipe prompt */}
+                      <span className="absolute bottom-2.5 right-3 text-[7.5px] font-mono text-white/40 tracking-wider flex items-center gap-1.5 select-none pointer-events-none">
+                        <span>🔄 Swipe / Drag tube to rotate 3D</span>
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Realtime C-Factor turbulence states list banner */}
+                  {showTurbulence && (
+                    <div className="absolute bottom-2.5 inset-x-2 px-2.5 py-1.5 bg-[#0e0c0a]/90 backdrop-blur-sm border border-[#4a3e35]/30 rounded-xl flex items-center justify-between text-[8px] font-mono select-none pointer-events-none z-10">
+                      <div className="flex items-center gap-1.5">
+                        <span className={`w-1.5 h-1.5 rounded-full ${roughnessC === 100 ? 'bg-amber-500 animate-ping' : 'bg-emerald-500'}`} />
+                        <span className="text-white/45">FLOW REGIME:</span>
+                        <span className={`font-black ${roughnessC === 100 ? 'text-amber-400' : 'text-emerald-400'}`}>
+                          {roughnessC === 100 ? 'Boundary Turbulence' : 'Smooth Laminar'}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-white/45">C-FACTOR:</span>
+                        <span className="text-secondary font-black ml-1">{roughnessC}</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="w-full text-center mt-3 text-[10px] font-sans text-white/50">
+                  {viewMode === 'cross' ? (
+                    <span>Pipe Interior Cross-Section (OD: <strong className="text-white">{odSize}mm</strong> • wall: <strong className="text-white">{wallThickness}mm</strong> • Bore ID: <strong className="text-white">{internalDiameter}mm</strong>)</span>
+                  ) : (
+                    <span>Holographic 3D Pipeline (OD: <strong className="text-white">{odSize}mm</strong> • Roughness C-Factor: <strong className="text-white text-secondary">{roughnessC}</strong>)</span>
+                  )}
                 </div>
 
                 {/* Physics telemetry display layout */}
@@ -434,11 +815,11 @@ export default function InteractiveFactoryHub() {
                         <Zap className="w-3.5 h-3.5 text-secondary" />
                         Engineering Optimization Pattern
                       </div>
-                      <p className="text-[11px] text-white/70 font-sans leading-relaxed mt-1">
+                      <p className="text-[11px] text-white/70 font-sans leading-relaxed mt-1 block">
                         {pipeMaterial === 'IRON' ? (
-                          'Standard Ductile Iron features double the inner skin friction loss coefficient than polymers. Consider upgrading to HDPE or PVC conduits for up to 35% reduction in motor energy consumption schemes.'
+                          `Ductile Iron has a high-resistance skin drag coefficient (C-Factor = ${roughnessC}), triggering heavy friction shear and turbulent eddy losses near the boundaries. Toggle the Turbulence Layer in 3D Mode to view these chaotic, wavy flow paths. Upgrading to smooth polymers limits line head loss.`
                         ) : (
-                          `Smooth polymer interior (Hazen-Williams C=${roughnessC}) guarantees near-lossless distribution. Best optimal choice for rural Jal Jeevan water schemes targeting elevated storage tank conduits.`
+                          `Smooth polymers boast a high coefficient (C-Factor = ${roughnessC}). Fluid slips over the inner wall frictionlessly, preserving pristine laminar streamlines. Toggle the Turbulence Layer to verify the stable, parallel slip flow paths.`
                         )}
                       </p>
                     </div>

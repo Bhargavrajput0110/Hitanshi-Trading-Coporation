@@ -688,7 +688,7 @@ export default function Hero({ onExploreClick, onOpenEstimatorClick }: HeroProps
                         : 'bg-neutral-900/60 border-white/5 text-white/50 hover:border-white/15 hover:text-white'
                     }`}
                   >
-                    {mat}
+                    {mat === 'IRON' ? 'DI Pipe' : mat}
                   </button>
                 ))}
               </div>

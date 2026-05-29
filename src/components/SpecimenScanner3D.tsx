@@ -78,6 +78,35 @@ export default function SpecimenScanner3D({ materialType, materialsDatabase }: S
     dragRef.current.isDragging = false;
   };
 
+  // Mobile Touch Interactions
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length === 1) {
+      dragRef.current.isDragging = true;
+      dragRef.current.startX = e.touches[0].clientX;
+      dragRef.current.startY = e.touches[0].clientY;
+      dragRef.current.tempX = rotation.x;
+      dragRef.current.tempY = rotation.y;
+      setIsAutoRotating(false);
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!dragRef.current.isDragging || e.touches.length !== 1) return;
+    const dx = e.touches[0].clientX - dragRef.current.startX;
+    const dy = e.touches[0].clientY - dragRef.current.startY;
+    
+    // Scale factor for sensitivity (slightly more sensitive on touch screen for comfort)
+    const dragSensitivity = 0.009;
+    setRotation({
+      x: Math.max(-1.2, Math.min(1.2, dragRef.current.tempX + dy * dragSensitivity)),
+      y: dragRef.current.tempY + dx * dragSensitivity
+    });
+  };
+
+  const handleTouchEnd = () => {
+    dragRef.current.isDragging = false;
+  };
+
   // Render Specimen in 3D using mathematical projections
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -498,11 +527,15 @@ export default function SpecimenScanner3D({ materialType, materialsDatabase }: S
       {/* 3D Canvas Rendering Container */}
       <div 
         ref={containerRef}
-        className="w-full aspect-[4/3] max-h-[300px] sm:max-h-[340px] bg-neutral-950/90 border border-white/5 rounded-2xl relative overflow-hidden cursor-grab active:cursor-grabbing group shadow-inner"
+        className="w-full aspect-[4/3] max-h-[300px] sm:max-h-[340px] bg-neutral-950/90 border border-white/5 rounded-2xl relative overflow-hidden cursor-grab active:cursor-grabbing touch-none group shadow-inner"
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUpOrLeave}
         onMouseLeave={handleMouseUpOrLeave}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        onTouchCancel={handleTouchEnd}
       >
         {/* Status Scanner Overlays */}
         <div className="absolute top-3 left-4 flex items-center gap-1.5 pointer-events-none select-none">
@@ -529,9 +562,9 @@ export default function SpecimenScanner3D({ materialType, materialsDatabase }: S
         </div>
 
         {/* Drag Helper Tooltip Overlay */}
-        <div className="absolute inset-x-0 bottom-3 flex justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
-          <span className="bg-black/80 px-2.5 py-1 border border-white/10 rounded-md text-[8px] text-white/60 font-mono">
-            🖱️ Click &amp; Drag Specimen to Rotate Scanner
+        <div className="absolute inset-x-0 bottom-3 flex justify-center opacity-90 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none px-4 text-center">
+          <span className="bg-black/95 px-3 py-1.5 border border-[#aa9273]/30 rounded-xl text-[9px] text-secondary font-mono tracking-wide shadow-md">
+            📱 Swipe or Drag specimen to orbit in 3D
           </span>
         </div>
 

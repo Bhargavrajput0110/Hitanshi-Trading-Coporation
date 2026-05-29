@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Globe, Mail, Phone, ChevronRight, Award, ChevronLeft, Quote, ChevronDown, HelpCircle } from 'lucide-react';
+import { Globe, Mail, Phone, ChevronRight, Award, ChevronLeft, Quote, ChevronDown, HelpCircle, MapPin, Truck, Compass, Layers } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { APIProvider, Map, AdvancedMarker, Pin, InfoWindow, useAdvancedMarkerRef } from '@vis.gl/react-google-maps';
 
@@ -99,6 +99,147 @@ function MapMarkerWithInfoWindow() {
       )}
     </>
   );
+}
+
+interface LogisticsNode {
+  city: string;
+  state: string;
+  distance: number;
+  transitHours: number;
+  routeHighlight: string;
+  x: number;
+  y: number;
+  lat: number;
+  lng: number;
+}
+
+const REGIONAL_HUBS: LogisticsNode[] = [
+  { city: 'Jalgaon', state: 'Maharashtra', distance: 100, transitHours: 3, routeHighlight: 'Via NH 53 (Eastbound corridor)', x: 310, y: 120, lat: 21.0077, lng: 75.5626 },
+  { city: 'Nashik', state: 'Maharashtra', distance: 160, transitHours: 4.5, routeHighlight: 'Via NH 60 (Agri industrial belt)', x: 130, y: 160, lat: 19.9975, lng: 73.7898 },
+  { city: 'Indore', state: 'Madhya Pradesh', distance: 220, transitHours: 5.5, routeHighlight: 'Via NH 52 (Malwa distribution link)', x: 250, y: 40, lat: 22.7196, lng: 75.8577 },
+  { city: 'Aurangabad', state: 'Maharashtra', distance: 180, transitHours: 5, routeHighlight: 'Via Aurangabad - Dhule highway', x: 260, y: 180, lat: 19.8762, lng: 75.3433 },
+  { city: 'Pune', state: 'Maharashtra', distance: 340, transitHours: 8.5, routeHighlight: 'Via NH 60 bypass link', x: 150, y: 225, lat: 18.5204, lng: 73.8567 },
+  { city: 'Surat', state: 'Gujarat', distance: 230, transitHours: 6, routeHighlight: 'Via NH 53 industrial corridor', x: 100, y: 105, lat: 21.1702, lng: 72.8311 },
+  { city: 'Mumbai', state: 'Maharashtra', distance: 325, transitHours: 8, routeHighlight: 'Via NH 3 central arterial', x: 70, y: 210, lat: 19.0760, lng: 72.8777 },
+  { city: 'Bhopal', state: 'Madhya Pradesh', distance: 410, transitHours: 10, routeHighlight: 'Via NH 52 & NH 47', x: 380, y: 30, lat: 23.2599, lng: 77.4126 }
+];
+
+import { useMap } from '@vis.gl/react-google-maps';
+
+function ActiveCorridorsLayer() {
+  const map = useMap();
+
+  useEffect(() => {
+    if (!map || typeof google === 'undefined') return;
+
+    const dhuleCoord = { lat: 21.0117, lng: 74.7749 };
+    const polylines: any[] = [];
+    const infowindows: any[] = [];
+
+    try {
+      const bounds = new google.maps.LatLngBounds();
+      bounds.extend(dhuleCoord);
+
+      REGIONAL_HUBS.forEach((dest) => {
+        bounds.extend({ lat: dest.lat, lng: dest.lng });
+
+        // Transparent shadow trail
+        const shadowLine = new google.maps.Polyline({
+          path: [dhuleCoord, { lat: dest.lat, lng: dest.lng }],
+          geodesic: true,
+          strokeColor: '#fcb045',
+          strokeOpacity: 0.25,
+          strokeWeight: 5,
+          map: map,
+        });
+        polylines.push(shadowLine);
+
+        // Core amber line
+        const polyline = new google.maps.Polyline({
+          path: [dhuleCoord, { lat: dest.lat, lng: dest.lng }],
+          geodesic: true,
+          strokeColor: '#8b7355',
+          strokeOpacity: 0.9,
+          strokeWeight: 2,
+          map: map,
+        });
+        polylines.push(polyline);
+
+        // Fast animated symbol progression indicating live transit direction flow
+        let count = 0;
+        const interval = setInterval(() => {
+          count = (count + 1) % 100;
+          polyline.set('icons', [
+            {
+              icon: {
+                path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
+                scale: 1.8,
+                strokeColor: '#fcb045',
+                fillColor: '#fcb045',
+                fillOpacity: 1,
+              },
+              offset: count + '%',
+            },
+          ]);
+        }, 65);
+
+        (polyline as any)._flowInterval = interval;
+
+        // Floating location target indicator
+        const marker = new google.maps.Marker({
+          position: { lat: dest.lat, lng: dest.lng },
+          map: map,
+          title: `${dest.city} Dispatch Target Sector`,
+          icon: {
+            path: google.maps.SymbolPath.CIRCLE,
+            scale: 5,
+            fillColor: '#8b7355',
+            fillOpacity: 1,
+            strokeColor: '#ffffff',
+            strokeWeight: 1.5,
+          },
+        });
+        polylines.push(marker);
+
+        // Informational overlay
+        const infoWindow = new google.maps.InfoWindow({
+          content: `
+            <div style="color: #1c1917; font-family: system-ui, sans-serif; padding: 6px; font-size: 11px; max-width: 220px;">
+              <strong style="color: #8b7355; font-size: 12px; display: block; margin-bottom: 3px;">${dest.city} Distribution Grid</strong>
+              <div style="margin-bottom: 2px;">Distance: <strong>${dest.distance} km</strong> from factory</div>
+              <div>Average Transit: <strong>~${dest.transitHours} Hours</strong></div>
+              <div style="font-size: 9px; color: #78716c; margin-top: 4px; border-t: 1px solid #e7e5e4; padding-top: 3px;">
+                ${dest.routeHighlight}
+              </div>
+            </div>
+          `,
+        });
+
+        marker.addListener('click', () => {
+          infowindows.forEach((iw) => iw.close());
+          infoWindow.open(map, marker);
+        });
+
+        infowindows.push(infoWindow);
+      });
+
+      map.fitBounds(bounds);
+    } catch (err) {
+      console.warn('Google Map active corridors failed to draw:', err);
+    }
+
+    return () => {
+      polylines.forEach((item) => {
+        if (item._flowInterval) {
+          clearInterval(item._flowInterval);
+        }
+        item.setMap(null);
+      });
+      infowindows.forEach((iw) => iw.close());
+    };
+  }, [map]);
+
+  return null;
 }
 
 const testimonialsTranslations = {
@@ -274,6 +415,8 @@ export default function Footer({ onOpenQuoteModal }: FooterProps = {}) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [direction, setDirection] = useState(0);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const [showCorridorsLayer, setShowCorridorsLayer] = useState<boolean>(true);
+  const [hoveredHub, setHoveredHub] = useState<LogisticsNode | null>(null);
 
   const activeTestimonials = testimonialsTranslations[lang];
   const activeFaqItems = faqItemsTranslations[lang];
@@ -594,31 +737,73 @@ export default function Footer({ onOpenQuoteModal }: FooterProps = {}) {
               </p>
             </div>
 
-            {/* Dhule Office Google Map / Fallback section */}
-            <div className="overflow-hidden mt-3 shadow-md">
-              <MapErrorBoundary fallback={
-                <div className="w-full h-[140px] bg-white/[0.03] border border-white/10 flex flex-col items-center justify-center p-3 text-center select-none relative overflow-hidden">
-                  <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff02_1px,transparent_1px),linear-gradient(to_bottom,#ffffff02_1px,transparent_1px)] bg-[size:10px_10px] pointer-events-none" />
-                  <div className="relative z-10 flex flex-col items-center gap-1">
-                    <div className="w-6 h-6 rounded-full bg-[#8b7355]/20 flex items-center justify-center border border-[#8b7355]/40 text-secondary">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-map-pin"><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/></svg>
-                    </div>
-                    <div>
-                      <p className="text-[11px] font-serif italic text-white/90">Plot 42, MIDC Phase III, Dhule</p>
-                      <p className="text-[8px] text-white/40 uppercase tracking-widest mt-0.5">Google Maps Ready</p>
-                    </div>
-                    <p className="text-[9px] text-[#8b7355] leading-normal font-sans text-center max-w-[250px]">
-                      Add <code className="bg-white/5 px-1 py-0.5 text-[8px] text-white">GOOGLE_MAPS_PLATFORM_KEY</code> to Secrets to load live radar mapping.
-                    </p>
+            {/* Dhule Office Google Map / Fallback section with Dispatch Corridor Layer */}
+            <div className="relative mt-4 border border-white/10 bg-[#0a0a0c] rounded-2xl overflow-hidden shadow-xl">
+              
+              {/* Header Floating Toolbar */}
+              <div className="absolute top-2.5 inset-x-2.5 z-10 flex flex-col gap-1.5 pointer-events-none">
+                <div className="flex items-center justify-between bg-black/85 backdrop-blur-md border border-white/10 px-3 py-2 rounded-xl pointer-events-auto">
+                  <div className="flex items-center gap-2">
+                    <span className="relative flex h-2 w-2">
+                      <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${showCorridorsLayer ? 'bg-amber-500' : 'bg-[#8b7355]'}`}></span>
+                      <span className={`relative inline-flex rounded-full h-2 w-2 ${showCorridorsLayer ? 'bg-amber-500' : 'bg-[#8b7355]'}`}></span>
+                    </span>
+                    <span className="text-[10px] sm:text-[11px] font-sans font-bold tracking-tight text-white/95">
+                      {lang === 'hi' ? 'क्षेत्रीय प्रेषण गलियारे' : 'Active Regional Dispatch Corridors'}
+                    </span>
                   </div>
+
+                  <button
+                    onClick={() => setShowCorridorsLayer(!showCorridorsLayer)}
+                    className={`flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg border font-mono text-[8px] uppercase tracking-wider font-extrabold transition-all cursor-pointer pointer-events-auto ${
+                      showCorridorsLayer 
+                        ? 'bg-amber-500/10 border-amber-500/30 text-amber-400' 
+                        : 'bg-white/5 border-white/10 text-white/40 hover:bg-white/10 hover:text-white'
+                    }`}
+                    title="Toggle Regional Corridors"
+                  >
+                    <Layers className="w-3 h-3" />
+                    <span>{showCorridorsLayer ? (lang === 'hi' ? 'परत चालू' : 'Layer: ON') : (lang === 'hi' ? 'परत बंद' : 'Layer: OFF')}</span>
+                  </button>
                 </div>
-              }>
-                {hasValidKey ? (
-                  <div className="w-full h-[140px] border border-white/10 relative">
+
+                {/* Subtitle / Details panel on hover or default */}
+                {showCorridorsLayer && (
+                  <div className="bg-black/95 backdrop-blur-md border border-amber-500/20 px-3 py-1.5 rounded-xl text-[10px] leading-snug flex items-center gap-2 text-white/80 pointer-events-auto shadow-md animate-fade-in">
+                    <Truck className="w-3.5 h-3.5 text-secondary flex-shrink-0 animate-bounce" />
+                    <div className="flex-1 truncate">
+                      {hoveredHub ? (
+                        <>
+                          <span className="text-amber-400 font-bold">{hoveredHub.city}:</span>{' '}
+                          <span className="text-white/95 font-medium">{hoveredHub.distance} km</span>{' '}
+                          <span className="text-white/50 font-light">via {hoveredHub.routeHighlight.split(' (')[0]} (~{hoveredHub.transitHours}h)</span>
+                        </>
+                      ) : (
+                        <span className="text-white/65 font-light">
+                          {lang === 'hi' 
+                            ? 'धुले से सीधी माल ढुलाई पारगमन लाइनों का विश्लेषण करने के लिए हब पर माउस घुमाएं' 
+                            : 'Hover or tap hubs to analyze direct freight transit lines from Dhule HQ'}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Map Canvas / Viewer */}
+              <div className="w-full h-[260px] sm:h-[300px] relative">
+                <MapErrorBoundary fallback={
+                  <div className="w-full h-full bg-neutral-950 flex flex-col items-center justify-center p-3 text-center select-none relative overflow-hidden">
+                    <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff02_1px,transparent_1px),linear-gradient(to_bottom,#ffffff02_1px,transparent_1px)] bg-[size:10px_10px] pointer-events-none" />
+                    <Compass className="w-8 h-8 text-secondary/35 animate-spin" style={{ animationDuration: '8s' }} />
+                    <p className="text-xs text-white/40 font-mono tracking-widest uppercase mt-2.5">Boundary Crash Recovered Mode</p>
+                  </div>
+                }>
+                  {hasValidKey ? (
                     <APIProvider apiKey={API_KEY} version="weekly">
                       <Map
                         defaultCenter={{ lat: 21.0117, lng: 74.7749 }} // MIDC Avadhan, Dhule approx coordinates
-                        defaultZoom={14}
+                        defaultZoom={12}
                         mapId="DEMO_MAP_ID"
                         internalUsageAttributionIds={['gmp_mcp_codeassist_v1_aistudio']}
                         style={{ width: '100%', height: '100%' }}
@@ -626,27 +811,124 @@ export default function Footer({ onOpenQuoteModal }: FooterProps = {}) {
                         zoomControl={true}
                       >
                         <MapMarkerWithInfoWindow />
+                        {showCorridorsLayer && <ActiveCorridorsLayer />}
                       </Map>
                     </APIProvider>
-                  </div>
-                ) : (
-                  <div className="w-full h-[140px] bg-white/[0.03] border border-white/10 flex flex-col items-center justify-center p-3 text-center select-none relative overflow-hidden">
-                    <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff02_1px,transparent_1px),linear-gradient(to_bottom,#ffffff02_1px,transparent_1px)] bg-[size:10px_10px] pointer-events-none" />
-                    <div className="relative z-10 flex flex-col items-center gap-1">
-                      <div className="w-6 h-6 rounded-full bg-[#8b7355]/20 flex items-center justify-center border border-[#8b7355]/40 text-secondary">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-map-pin"><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/></svg>
-                      </div>
-                      <div>
-                        <p className="text-[11px] font-serif italic text-white/90">Plot 42, MIDC Phase III, Dhule</p>
-                        <p className="text-[8px] text-white/40 uppercase tracking-widest mt-0.5">Google Maps Ready</p>
-                      </div>
-                      <p className="text-[9px] text-[#8b7355] leading-normal font-sans text-center max-w-[250px]">
-                        Add <code className="bg-white/5 px-1 py-0.5 text-[8px] text-white">GOOGLE_MAPS_PLATFORM_KEY</code> to Secrets to load live radar mapping.
-                      </p>
+                  ) : (
+                    /* Spectacular 2D Vector Interactive Radar map with animating trajectories */
+                    <div className="w-full h-full bg-[#070709] relative select-none overflow-hidden flex items-center justify-center pt-14 px-4 pb-2">
+                      {/* Grid overlay */}
+                      <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.015)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.015)_1px,transparent_1px)] bg-[size:16px_16px] pointer-events-none" />
+                      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(139,115,85,0.08)_0%,transparent_80%)] pointer-events-none" />
+
+                      <svg className="w-full h-full max-w-[480px] max-h-[220px] relative z-0" viewBox="0 0 500 240" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                          <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+                            <feGaussianBlur stdDeviation="3.5" result="blur" />
+                            <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                          </filter>
+                          <linearGradient id="corridorGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stopColor="#fcb045" />
+                            <stop offset="100%" stopColor="#8b7355" />
+                          </linearGradient>
+                        </defs>
+
+                        {/* Dhule Range rings */}
+                        {showCorridorsLayer && (
+                          <>
+                            <circle cx="210" cy="120" r="50" fill="none" stroke="rgba(139,115,85,0.06)" strokeWidth="1" strokeDasharray="3,3" />
+                            <circle cx="210" cy="120" r="110" fill="none" stroke="rgba(139,115,85,0.04)" strokeWidth="1" strokeDasharray="4,4" />
+                            <circle cx="210" cy="120" r="175" fill="none" stroke="rgba(139,115,85,0.02)" strokeWidth="1" strokeDasharray="6,6" />
+                          </>
+                        )}
+
+                        {/* Corridor lines radiating from Dhule */}
+                        {showCorridorsLayer && REGIONAL_HUBS.map((hub) => {
+                          const isHovered = hoveredHub?.city === hub.city;
+                          return (
+                            <g key={hub.city}>
+                              {/* Static backdrop track */}
+                              <line
+                                x1="210"
+                                y1="120"
+                                x2={hub.x}
+                                y2={hub.y}
+                                stroke={isHovered ? '#fcb045' : '#8b7355'}
+                                strokeWidth={isHovered ? '2.5' : '1.2'}
+                                strokeOpacity={isHovered ? '0.35' : '0.12'}
+                                className="transition-all duration-300"
+                              />
+
+                              {/* Animating dashed lightbeam */}
+                              <line
+                                x1="210"
+                                y1="120"
+                                x2={hub.x}
+                                y2={hub.y}
+                                stroke="url(#corridorGrad)"
+                                strokeWidth={isHovered ? '1.8' : '1.2'}
+                                strokeOpacity={isHovered ? '0.9' : '0.6'}
+                                strokeDasharray="4, 10"
+                                style={{
+                                  strokeDashoffset: isHovered ? 120 : 200,
+                                  animation: 'svgDash 4s linear infinite'
+                                }}
+                              />
+
+                              {/* Traveling locator bullet */}
+                              <circle r="3.2" fill="#fcb045" opacity="0.9" filter="url(#glow)">
+                                <animateMotion
+                                  dur={`${Math.max(1.8, hub.distance * 0.018)}s`}
+                                  repeatCount="indefinite"
+                                  path={`M 210,120 L ${hub.x},${hub.y}`}
+                                />
+                              </circle>
+                            </g>
+                          );
+                        })}
+
+                        {/* Dhule central factory circle origin */}
+                        <g className="cursor-pointer">
+                          <circle cx="210" cy="120" r="15" fill="rgba(139,115,85,0.12)" stroke="rgba(139,115,85,0.25)" strokeWidth="1" className="animate-pulse" />
+                          <circle cx="210" cy="120" r="5.5" fill="#8b7355" />
+                          <circle cx="210" cy="120" r="1.8" fill="#ffffff" />
+                          <text x="210" y="142" textAnchor="middle" fill="#ffffff" className="font-sans font-bold text-[8.5px] tracking-wide" opacity="0.95">
+                            DHULE HQ
+                          </text>
+                          <text x="210" y="150" textAnchor="middle" fill="#8b7355" className="font-mono text-[5.5px] uppercase tracking-widest font-black">
+                            ORIGIN HUB
+                          </text>
+                        </g>
+
+                        {/* Destination targets */}
+                        {REGIONAL_HUBS.map((hub) => {
+                          const isHovered = hoveredHub?.city === hub.city;
+                          return (
+                            <g
+                              key={hub.city}
+                              className="cursor-pointer"
+                              onMouseEnter={() => setHoveredHub(hub)}
+                              onMouseLeave={() => setHoveredHub(null)}
+                              onTouchStart={() => setHoveredHub(hub)}
+                            >
+                              <circle cx={hub.x} cy={hub.y} r={isHovered ? '9.5' : '6.5'} fill="rgba(12,10,9,0.9)" stroke={isHovered ? '#fcb045' : 'rgba(255,255,255,0.12)'} strokeWidth="1" className="transition-all duration-300" />
+                              <circle cx={hub.x} cy={hub.y} r={isHovered ? '4.5' : '2.5'} fill={isHovered ? '#fcb045' : '#8b7355'} className="transition-all duration-300" />
+                              
+                              <text x={hub.x} y={hub.y + 13} textAnchor="middle" fill={isHovered ? '#fcb045' : '#ae9e8e'} className="font-sans font-extrabold text-[7.5px] tracking-tighter transition-colors">
+                                {hub.city}
+                              </text>
+                              <text x={hub.x} y={hub.y + 19} textAnchor="middle" fill="rgba(255,255,255,0.3)" className="font-mono text-[5px] transition-colors">
+                                {hub.state === 'Maharashtra' ? 'MH' : hub.state === 'Madhya Pradesh' ? 'MP' : 'GJ'}
+                              </text>
+                            </g>
+                          );
+                        })}
+                      </svg>
                     </div>
-                  </div>
-                )}
-              </MapErrorBoundary>
+                  )}
+                </MapErrorBoundary>
+              </div>
+
             </div>
 
             {/* Bureau markings and legal compliance statements */}

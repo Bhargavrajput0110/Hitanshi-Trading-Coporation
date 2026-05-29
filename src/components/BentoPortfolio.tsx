@@ -186,21 +186,57 @@ export default function BentoPortfolio({ onSelectProduct, onSelectProductById, o
 
   // Initialize 3D tilt hooks for each card
   const hdpeTilt = use3DTilt(5);
+  const diTilt = use3DTilt(5);
   const motorTilt = use3DTilt(7);
   const pvcTilt = use3DTilt(7);
   const tankTilt = use3DTilt(5);
 
   // Initialize 3D touch/drag rotation hooks for interactive previews
   const hdpeRotation = useTouch3DRotation(-22, 0);
+  const diRotation = useTouch3DRotation(-22, 0);
   const motorRotation = useTouch3DRotation(-22, 0);
   const pvcRotation = useTouch3DRotation(-22, 0);
   const tankRotation = useTouch3DRotation(-22, 0);
 
   // Extract specific products
   const hdpeProduct = ALL_PRODUCTS.find(p => p.id === 'hdpe-pipes');
+  const diProduct = ALL_PRODUCTS.find(p => p.id === 'di-pipes');
   const motorProduct = ALL_PRODUCTS.find(p => p.id === 'industrial-motors');
   const pvcProduct = ALL_PRODUCTS.find(p => p.id === 'pvc-pipes');
   const tankProduct = ALL_PRODUCTS.find(p => p.id === 'water-tanks');
+
+  // Ductile Iron (DI) Pipe Simulator State
+  const diSimOptions = [
+    { od: 100, class: 'K7', thickness: 5.0, pressure: '32 Bar', label: '100 mm DN100 K7 Light Main', weight: '16.2 kg/m', flow: '82 L/s' },
+    { od: 150, class: 'K9', thickness: 6.0, pressure: '40 Bar', label: '150 mm DN150 K9 High Pressure', weight: '27.4 kg/m', flow: '185 L/s' },
+    { od: 200, class: 'K9', thickness: 6.3, pressure: '40 Bar', label: '200 mm DN200 K9 Arterial Link', weight: '38.2 kg/m', flow: '340 L/s' },
+    { od: 300, class: 'K9', thickness: 7.2, pressure: '40 Bar', label: '300 mm DN300 K9 Bulk Main', weight: '64.8 kg/m', flow: '790 L/s' }
+  ];
+  const [activeDiIdx, setActiveDiIdx] = useState(1); // 150 mm as default
+  const [diProcurementView, setDiProcurementView] = useState<'specs' | 'procurement'>('specs');
+  const [selectedDiClass, setSelectedDiClass] = useState<'K7' | 'K9'>('K9');
+
+  const diClassComparisonData: Record<number, {
+    k7: { thickness: number; pressure: string; weight: string; cost: string; use: string; flow: string };
+    k9: { thickness: number; pressure: string; weight: string; cost: string; use: string; flow: string };
+  }> = {
+    100: {
+      k7: { thickness: 5.0, pressure: '32 Bar (PN32)', weight: '16.2 kg/m', cost: '100% (Baseline)', use: 'Gravity networks and light agricultural links', flow: '82 L/s' },
+      k9: { thickness: 6.0, pressure: '40 Bar (PN40)', weight: '19.4 kg/m', cost: '120% Premium', use: 'High-head rising mains, stream crossings', flow: '78 L/s' }
+    },
+    150: {
+      k7: { thickness: 5.0, pressure: '32 Bar (PN32)', weight: '22.8 kg/m', cost: '100% (Baseline)', use: 'Urban distribution segments & gravity flow sewers', flow: '190 L/s' },
+      k9: { thickness: 6.0, pressure: '40 Bar (PN40)', weight: '27.4 kg/m', cost: '120% Premium', use: 'High dynamic-pressure municipal pumped mains', flow: '185 L/s' }
+    },
+    200: {
+      k7: { thickness: 5.0, pressure: '32 Bar (PN32)', weight: '31.5 kg/m', cost: '100% (Baseline)', use: 'Secondary bulk main feeds & urban water grids', flow: '350 L/s' },
+      k9: { thickness: 6.3, pressure: '40 Bar (PN40)', weight: '38.2 kg/m', cost: '121% Premium', use: 'Multi-stage pump lift irrigation pipelines', flow: '340 L/s' }
+    },
+    300: {
+      k7: { thickness: 5.6, pressure: '32 Bar (PN32)', weight: '53.6 kg/m', cost: '100% (Baseline)', use: 'Trunk gravity systems, lower-load municipal links', flow: '810 L/s' },
+      k9: { thickness: 7.2, pressure: '40 Bar (PN40)', weight: '64.8 kg/m', cost: '121% Premium', use: 'Deep high earth load burials, water-hammer regions', flow: '790 L/s' }
+    }
+  };
 
   // HDPE Pipe Simulator State
   const hdpeSimOptions = [
@@ -234,6 +270,7 @@ export default function BentoPortfolio({ onSelectProduct, onSelectProductById, o
 
   // 3D CSS Model visualization states
   const [show3DHDPE, setShow3DHDPE] = useState(false);
+  const [show3DDI, setShow3DDI] = useState(false);
   const [show3DMotor, setShow3DMotor] = useState(false);
   const [show3DPVC, setShow3DPVC] = useState(false);
   const [show3DTank, setShow3DTank] = useState(false);
@@ -712,10 +749,474 @@ export default function BentoPortfolio({ onSelectProduct, onSelectProductById, o
               </div>
             </div>
 
+                  {/* 2. Ductile Iron (DI) Pipes & Fittings (Large - col-span-8) */}
+        {diProduct && (() => {
+          const activeDn = diSimOptions[activeDiIdx]?.od || 150;
+          const activeComparison = diClassComparisonData[activeDn] || diClassComparisonData[150];
+          const activeDiSpec = selectedDiClass === 'K7' ? activeComparison.k7 : activeComparison.k9;
+
+          return (
+            <motion.div 
+              variants={cardVariants}
+              whileHover={{ 
+                scale: 1.03, 
+                y: -8,
+                borderColor: "rgba(129, 138, 248, 0.55)",
+                boxShadow: "0 40px 80px -15px rgba(0, 0, 0, 0.85), 0 0 30px rgba(129, 138, 248, 0.35)"
+              }}
+              onMouseEnter={() => setHoveredCard('di-pipes')}
+              onMouseMove={diTilt.handleMouseMove}
+              onMouseLeave={() => {
+                diTilt.handleMouseLeave();
+                setHoveredCard(null);
+              }}
+              style={{ 
+                rotateX: diTilt.rotateX, 
+                rotateY: diTilt.rotateY, 
+                transformStyle: "preserve-3d" 
+              }}
+              className="lg:col-span-8 premium-card group relative overflow-hidden bg-[#0d0d11]/95 p-6 sm:p-8 min-h-[520px] flex flex-col justify-between border border-[#818cf8]/20 shadow-lg hover:shadow-2xl hover:shadow-[#818cf8]/15 transition-all duration-500 rounded-3xl"
+            >
+              {/* Specs summary Hover Overlay */}
+              <AnimatePresence>
+                {hoveredCard === 'di-pipes' && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -20, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -15, scale: 0.95 }}
+                    transition={{ type: 'spring', stiffness: 260, damping: 20 }}
+                    className="absolute top-4 inset-x-4 z-40 bg-black/85 backdrop-blur-md rounded-2xl border border-[#818cf8]/45 p-3.5 hidden lg:flex items-center justify-between shadow-2xl pointer-events-none select-none"
+                  >
+                    <div className="flex flex-col">
+                      <span className="text-[8px] font-mono tracking-widest text-[#818cf8] uppercase font-bold">Specs QuickView</span>
+                      <span className="text-xs text-white/90 font-medium font-serif mt-0.5">Ductile Iron Spheroidal Specimen</span>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-3 sm:gap-5 text-center">
+                      <div className="flex flex-col">
+                        <span className="text-[7px] sm:text-[7.5px] font-mono text-white/40 uppercase tracking-wider">Nominal Bore (DN)</span>
+                        <span className="text-[10px] sm:text-[10.5px] font-mono font-bold text-[#818cf8] mt-0.5">
+                          DN {activeDn} (Class {selectedDiClass})
+                        </span>
+                      </div>
+                      <div className="w-[1px] h-6 bg-white/10" />
+                      <div className="flex flex-col">
+                        <span className="text-[7px] sm:text-[7.5px] font-mono text-white/40 uppercase tracking-wider">Wall Thickness</span>
+                        <span className="text-[10px] sm:text-[10.5px] font-mono font-bold text-white mt-0.5">
+                          {activeDiSpec.thickness.toFixed(1)} mm
+                        </span>
+                      </div>
+                      <div className="w-[1px] h-6 bg-white/10" />
+                      <div className="flex flex-col">
+                        <span className="text-[7px] sm:text-[7.5px] font-mono text-white/40 uppercase tracking-wider">Working Margin</span>
+                        <span className="text-[10px] sm:text-[10.5px] font-mono font-bold text-emerald-400 mt-0.5">
+                          {activeDiSpec.pressure}
+                        </span>
+                      </div>
+                      <div className="w-[1px] h-6 bg-white/10" />
+                      <div className="flex flex-col items-center bg-[#818cf8]/20 border border-[#818cf8]/40 px-2 py-0.5 rounded-lg">
+                        <span className="text-[6.5px] font-mono text-[#818cf8] uppercase tracking-wider font-extrabold">⚖️ Mass per Meter</span>
+                        <span className="text-[10px] sm:text-[10.5px] font-mono font-bold text-indigo-300 mt-0.5 animate-pulse">
+                          {activeDiSpec.weight}
+                        </span>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Visual background image with dark contrast overlay */}
+              {diProduct.image && (
+                <div className="absolute inset-0 opacity-15 group-hover:scale-[1.03] transition-transform duration-1000 select-none pointer-events-none">
+                  <img 
+                    className="w-full h-full object-cover filter brightness-[0.7] contrast-[1.1]" 
+                    alt="Ductile Iron regional bulk municipal water installation pipelines" 
+                    src={diProduct.image}
+                    referrerPolicy="no-referrer"
+                  />
+                </div>
+              )}
+              
+              <div className="absolute inset-0 bg-gradient-to-t from-[#09090b] via-[#09090b]/85 to-[#0b0b0f]/50 z-0 pointer-events-none" />
+
+              <div className="relative z-10 w-full grid grid-cols-1 lg:grid-cols-12 gap-8 items-center h-full">
+                
+                {/* Left Column: Descriptions & Interactive Settings */}
+                <div className="lg:col-span-7 flex flex-col justify-between h-full space-y-6">
+                  <div className="space-y-4">
+                    <div className="flex flex-wrap items-center gap-2 w-full">
+                      <span className="bg-[#818cf8]/20 text-[#818cf8] text-[9px] font-sans font-bold tracking-[0.2em] px-3 py-1 uppercase rounded-full border border-[#818cf8]/35">
+                        Standard: IS 8329 / 1536 / 1538
+                      </span>
+                      <span className="text-[10px] font-mono text-white/40 tracking-wider flex items-center gap-1.5">
+                        <ShieldCheck className="w-3.5 h-3.5 text-indigo-400" /> TENDER ELIGIBLE
+                      </span>
+                      <span className="inline-flex items-center gap-1 bg-[#818cf8]/15 text-indigo-400 border border-[#818cf8]/30 px-2.5 py-1 rounded text-[9px] font-mono font-bold tracking-wider uppercase md:ml-auto">
+                        <Award className="w-3 h-3 text-indigo-400" /> CLASS: K7 / K9 APPROVED
+                      </span>
+                    </div>
+                    <h3 className="text-2xl sm:text-3xl font-light font-serif text-white tracking-tight">
+                      Ductile Iron (DI) <span className="italic sm:inline text-[#818cf8] font-semibold">Pipes &amp; Fittings</span>
+                    </h3>
+                    <p className="text-xs text-[#b4b4b8] font-sans font-light leading-relaxed">
+                      Centrifugally cast heavy utility alloys complete with high resistance internal cement-mortar lining. The absolute gold standard for high pressure urban grid pipelines and sewage master systems.
+                    </p>
+                    
+                    {isLaymanMode && (
+                      <motion.div 
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        className="bg-indigo-500/10 border border-indigo-500/25 p-3 rounded-xl flex items-start gap-2 text-[11px] text-indigo-200/90 leading-relaxed font-sans"
+                      >
+                        <span className="text-[14px] shrink-0 mt-0.5">💡</span>
+                        <div>
+                          <strong className="text-indigo-300 font-bold">Plain English:</strong> These are high-performance metal cast pipes. They are incredibly stiff and strong to withstand giant water pressures without bursting, and they are lined with cement on the inside so that the metal doesn't corrode and water stays pure.
+                        </div>
+                      </motion.div>
+                    )}
+                  </div>
+
+                  {/* Injected K7 vs K9 Class Comparison Matrix & Bore Diameter Selector */}
+                  <div className="bg-[#121216]/95 border border-[#818cf8]/25 p-4 rounded-2xl space-y-4 text-left shadow-[0_4px_24px_rgba(129,138,248,0.08)]">
+                    <div className="flex items-center justify-between border-b border-white/5 pb-2">
+                      <span className="text-[10px] font-mono font-bold text-[#818cf8] uppercase tracking-[0.14em] flex items-center gap-1.5">
+                        <Settings2 className="w-4 h-4 text-[#818cf8]" /> DN {activeDn} Specification Matrix
+                      </span>
+                      <span className="bg-[#818cf8]/15 text-[#818cf8] text-[8px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded border border-[#818cf8]/25">
+                        Tender Comparison
+                      </span>
+                    </div>
+                    
+                    {/* Bore Diameter (DN) Selection */}
+                    <div className="space-y-1.5">
+                      <span className="text-[8.5px] font-mono text-white/40 uppercase tracking-widest block">Select Pipeline Nominal Bore (Diameter):</span>
+                      <div className="grid grid-cols-4 gap-2">
+                        {diSimOptions.map((opt, idx) => (
+                          <button
+                            key={opt.od}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setActiveDiIdx(idx);
+                            }}
+                            className={`py-2 text-[10.5px] font-mono font-bold tracking-wide rounded-xl border transition-all cursor-pointer ${
+                              activeDiIdx === idx 
+                                ? 'bg-[#818cf8]/20 border-[#818cf8] text-white shadow-[0_0_12px_rgba(129,138,248,0.18)]' 
+                                : 'bg-black/50 border-white/5 text-white/50 hover:bg-black/75 hover:border-white/10'
+                            }`}
+                          >
+                            DN {opt.od}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Integrated K7 vs K9 comparison side-by-side data table */}
+                    <div className="grid grid-cols-2 gap-3 mt-1 text-left pointer-events-auto">
+                      {/* Class K7 Column */}
+                      <div 
+                        onClick={(e) => { e.stopPropagation(); setSelectedDiClass('K7'); }}
+                        className={`p-2.5 rounded-xl flex flex-col justify-between border cursor-pointer transition-all duration-300 ${
+                          selectedDiClass === 'K7'
+                            ? 'bg-[#181822] border-indigo-400/80 shadow-[0_0_12px_rgba(129,138,248,0.18)] ring-1 ring-indigo-400/20'
+                            : 'bg-black/40 border-white/5 opacity-55 hover:opacity-95 hover:border-white/10'
+                        }`}
+                      >
+                        <div>
+                          <div className="flex items-center justify-between mb-1">
+                            <span className={`text-[10px] font-extrabold ${selectedDiClass === 'K7' ? 'text-indigo-400' : 'text-white/60'}`}>Class K7</span>
+                            <span className="bg-emerald-500/10 text-emerald-400 text-[6.5px] font-mono px-1 py-0.5 rounded border border-emerald-500/20 font-bold">Standard</span>
+                          </div>
+                          <p className="text-[7.5px] text-zinc-400 leading-relaxed mb-2 line-clamp-1">Gravity sewer & local delivery net</p>
+
+                          <div className="space-y-1.5 text-[9px] font-mono">
+                            <div className="flex justify-between border-b border-white/5 pb-0.5">
+                              <span className="text-white/30 text-[7.5px]">Wall Ratio:</span>
+                              <span className="text-white font-bold">{activeComparison.k7.thickness.toFixed(1)} mm</span>
+                            </div>
+                            <div className="flex justify-between border-b border-white/5 pb-0.5">
+                              <span className="text-white/30 text-[7.5px]">Hydro Limit:</span>
+                              <span className="text-indigo-300 font-bold">{activeComparison.k7.pressure}</span>
+                            </div>
+                            <div className="flex justify-between border-b border-white/5 pb-0.5">
+                              <span className="text-white/30 text-[7.5px]">Unit Mass:</span>
+                              <span className="text-secondary font-bold">{activeComparison.k7.weight}</span>
+                            </div>
+                            <div className="flex justify-between border-b border-white/5 pb-0.5">
+                              <span className="text-white/30 text-[7.5px]">Flow Rate:</span>
+                              <span className="text-emerald-400 font-bold">{activeComparison.k7.flow}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-white/30 text-[7.5px]">Procure Price:</span>
+                              <span className="text-teal-400 font-semibold font-sans">{activeComparison.k7.cost}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="mt-2 text-[7.5px] text-zinc-400 border-t border-white/5 pt-1.5 leading-tight">
+                          <strong>Suitability:</strong> Gravity flow supply link, secondary urban/agro pipelines (highly cost-optimal).
+                        </div>
+                      </div>
+
+                      {/* Class K9 Column */}
+                      <div 
+                        onClick={(e) => { e.stopPropagation(); setSelectedDiClass('K9'); }}
+                        className={`p-2.5 rounded-xl flex flex-col justify-between border cursor-pointer transition-all duration-300 ${
+                          selectedDiClass === 'K9'
+                            ? 'bg-[#181822] border-indigo-400/80 shadow-[0_0_12px_rgba(129,138,248,0.18)] ring-1 ring-indigo-400/20'
+                            : 'bg-black/40 border-white/5 opacity-55 hover:opacity-95 hover:border-white/10'
+                        }`}
+                      >
+                        <div>
+                          <div className="flex items-center justify-between mb-1">
+                            <span className={`text-[10px] font-extrabold ${selectedDiClass === 'K9' ? 'text-amber-400' : 'text-white/60'}`}>Class K9</span>
+                            <span className="bg-amber-500/10 text-amber-400 text-[6.5px] font-mono px-1 py-0.5 rounded border border-amber-500/20 font-bold">Heavy Duty</span>
+                          </div>
+                          <p className="text-[7.5px] text-zinc-400 leading-relaxed mb-2 line-clamp-1">Pumped rising utility main</p>
+
+                          <div className="space-y-1.5 text-[9px] font-mono">
+                            <div className="flex justify-between border-b border-white/5 pb-0.5">
+                              <span className="text-white/30 text-[7.5px]">Wall Ratio:</span>
+                              <span className="text-white font-bold">{activeComparison.k9.thickness.toFixed(1)} mm</span>
+                            </div>
+                            <div className="flex justify-between border-b border-white/5 pb-0.5">
+                              <span className="text-white/30 text-[7.5px]">Hydro Limit:</span>
+                              <span className="text-indigo-300 font-bold">{activeComparison.k9.pressure}</span>
+                            </div>
+                            <div className="flex justify-between border-b border-white/5 pb-0.5">
+                              <span className="text-white/30 text-[7.5px]">Unit Mass:</span>
+                              <span className="text-secondary font-bold">{activeComparison.k9.weight}</span>
+                            </div>
+                            <div className="flex justify-between border-b border-white/5 pb-0.5">
+                              <span className="text-white/30 text-[7.5px]">Flow Rate:</span>
+                              <span className="text-emerald-400 font-bold">{activeComparison.k9.flow}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-white/30 text-[7.5px]">Procure Price:</span>
+                              <span className="text-[#818cf8] font-semibold font-sans">{activeComparison.k9.cost}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="mt-2 text-[7.5px] text-zinc-400 border-t border-white/5 pt-1.5 leading-tight">
+                          <strong>Suitability:</strong> Multistage lift irrigation pump links or highway/rail bed burials.
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="text-[7.5px] text-zinc-500 leading-relaxed border-t border-white/5 pt-2 flex items-center justify-between">
+                      <span>*Cost index mapped according to live weight profiles metric.</span>
+                      <span className="text-[#818cf8] font-bold flex items-center gap-1">
+                        <span className="relative flex h-1 w-1 shrink-0">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-1 w-1 bg-[#818cf8]"></span>
+                        </span>
+                        Click Class Card to scale 3D simulation
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right Column: 3D Interactive Isometric Preview */}
+                <div className="lg:col-span-5 flex flex-col items-center justify-center bg-black/40 p-5 rounded-3xl border border-white/5 relative min-h-[300px]">
+                  
+                  {/* 3D Product Toggle Button */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShow3DDI(!show3DDI);
+                    }}
+                    className="absolute top-3 right-3 z-20 px-3 py-1.5 bg-[#818cf8]/20 hover:bg-[#818cf8]/85 text-white border border-[#818cf8]/35 rounded-xl text-[9px] font-mono tracking-wider uppercase font-extrabold flex items-center gap-1.5 transition-all duration-300 shadow-md hover:scale-105 cursor-pointer pointer-events-auto"
+                  >
+                    <span className="relative flex h-1.5 w-1.5">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[#818cf8]"></span>
+                    </span>
+                    {show3DDI ? '2D Projection' : 'Interactive 3D Casing'}
+                  </button>
+
+                  {show3DDI ? (
+                    <div 
+                      className="relative w-full h-[210px] flex items-center justify-center select-none touch-none" 
+                      style={{ perspective: '800px', ...diRotation.bind.style }} 
+                      onClick={(e) => e.stopPropagation()}
+                      {...diRotation.bind}
+                    >
+                      {/* Rotating 3D CSS volumetric pipe model */}
+                      <div 
+                        className={`relative w-32 h-32 flex items-center justify-center ${diRotation.isInteracted ? '' : 'animate-spin-3d'}`}
+                        style={{ 
+                          transformStyle: 'preserve-3d',
+                          transform: diRotation.isInteracted 
+                            ? `rotateX(${diRotation.rotation.x}deg) rotateY(${diRotation.rotation.y}deg)` 
+                            : undefined
+                        }}
+                      >
+                        {Array.from({ length: 14 }).map((_, i) => {
+                          const isEndFlange = i === 0 || i === 13;
+                          return (
+                            <div
+                              key={i}
+                              className={`absolute rounded-full border-2 flex items-center justify-center transition-all ${
+                                isEndFlange 
+                                  ? 'border-[#818cf8]/60 bg-[#1e2025]' 
+                                  : 'border-[#475569]/30'
+                              }`}
+                              style={{
+                                width: isEndFlange ? '118px' : '100px',
+                                height: isEndFlange ? '118px' : '100px',
+                                transform: `translateZ(${(i - 7) * 9}px)`,
+                                transformStyle: 'preserve-3d',
+                                background: isEndFlange 
+                                  ? 'linear-gradient(135deg, #2d3039 0%, #1a1c23 100%)' 
+                                  : 'radial-gradient(circle, rgba(20,20,22,0.3) 60%, rgba(44,48,56,0.95) 100%)',
+                                boxShadow: isEndFlange 
+                                  ? '0 0 15px rgba(129, 138, 248, 0.3)' 
+                                  : '0 0 10px rgba(71, 85, 105, 0.15)',
+                              }}
+                            >
+                              {/* Bolt studs on double-ended flange coupling */}
+                              {isEndFlange && (
+                                <div className="absolute inset-1 rounded-full border-2 border-dashed border-yellow-500/35 pointer-events-none" />
+                              )}
+                              
+                              {/* CAST IRON SOLID WALL */}
+                              <div 
+                                className="rounded-full border-[1.5px] border-slate-700 flex items-center justify-center"
+                                style={{
+                                  width: '84px',
+                                  height: '84px',
+                                  background: 'rgba(25, 27, 33, 0.98)',
+                                }}
+                              >
+                                {/* CEMENT MORTAR LINING (Active Corrosion Shield - IS 8329!) with dynamic width scaling based on K7/K9 classes */}
+                                <div 
+                                  className="rounded-full border-[2px] border-stone-200/20 bg-stone-100 flex items-center justify-center"
+                                  style={{
+                                    width: selectedDiClass === 'K7' ? '76px' : '72px',
+                                    height: selectedDiClass === 'K7' ? '76px' : '72px',
+                                    background: 'radial-gradient(circle, #f5f5f4 50%, #d6d3d1 100%)',
+                                    transition: 'all 0.4s ease-out'
+                                  }}
+                                >
+                                  {/* Glowing water flow core inside cement lining */}
+                                  <div 
+                                    className="rounded-full bg-gradient-to-tr from-cyan-600/70 to-blue-500/60 border border-cyan-300 animate-pulse"
+                                    style={{
+                                      width: selectedDiClass === 'K7' ? '58px' : '54px',
+                                      height: selectedDiClass === 'K7' ? '58px' : '54px',
+                                      transition: 'all 0.4s ease-out'
+                                    }}
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      {/* Interactive Mobile instructions */}
+                      <div className="absolute bottom-2.5 bg-black/85 backdrop-blur-sm border border-[#818cf8]/35 px-3 py-1 rounded-full text-[8.5px] font-mono text-[#818cf8] tracking-widest uppercase pointer-events-none select-none flex items-center gap-1.5 shadow-md">
+                        <span className="inline-block animate-pulse">🔄</span> Drag or swipe to rotate Cast-Iron in 3D
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="absolute top-3 left-3 flex items-center gap-1.5 text-[8px] font-mono tracking-widest text-[#818cf8]/90 bg-[#818cf8]/10 px-2 py-1 rounded-md">
+                        <Activity className="w-3 h-3 text-indigo-400" /> CLASS {selectedDiClass} SCHEMATIC
+                      </div>
+                      
+                      {/* High intensity engineering isometric vector projection blueprint */}
+                      <div className="relative w-full h-[210px] flex items-center justify-center select-none overflow-hidden">
+                        <svg className="w-48 h-48 text-[#818cf8]/80 filter drop-shadow-[0_0_8px_rgba(129,138,248,0.2)]" viewBox="0 0 120 120" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+                          
+                          {/* Blueprint grid lines overlay inside SVG */}
+                          <line x1="20" y1="10" x2="20" y2="110" stroke="rgba(129,138,248,0.06)" strokeWidth="0.5" strokeDasharray="2,5" />
+                          <line x1="100" y1="10" x2="100" y2="110" stroke="rgba(129,138,248,0.06)" strokeWidth="0.5" strokeDasharray="2,5" />
+                          <line x1="10" y1="60" x2="110" y2="60" stroke="rgba(129,138,248,0.06)" strokeWidth="0.5" strokeDasharray="2,5" />
+
+                          {/* Heavy Outer Alloy Pipe Wall Cylinder */}
+                          <path d="M 23,38 A 12,28 0 0,0 23,94 L 88,86 A 12,28 0 0,0 88,30 Z" stroke="rgba(129, 138, 248, 0.5)" strokeWidth="0.5" fill="rgba(30,32,40,0.45)" />
+                          
+                          {/* Direct Outer Double-Flange Couplers standard IS 1538 standard fittings representation */}
+                          <ellipse cx="23" cy="66" rx="11" ry="27" stroke="#818cf8" strokeWidth="1.6" fill="rgba(55,58,68,0.85)" />
+                          <ellipse cx="23" cy="66" rx="6" ry="16" stroke="#c084fc" strokeWidth="1.2" fill="rgba(240,240,245,0.92)" />
+                          
+                          <ellipse cx="88" cy="58" rx="11" ry="27" stroke="#818cf8" strokeWidth="1.5" fill="rgba(55,58,68,0.7)" />
+                          
+                          {/* Internal Cement Lining (IS 8329) Dynamic thickness representation based on K7/K9 classes */}
+                          <path 
+                            d="M 23,43 A 8,20 0 0,0 23,89 L 88,81 A 8,20 0 0,0 88,35" 
+                            stroke={selectedDiClass === 'K7' ? 'rgba(255, 255, 255, 0.6)' : 'rgba(255, 255, 255, 0.35)'} 
+                            strokeWidth={selectedDiClass === 'K7' ? '0.75' : '1.35'} 
+                            strokeDasharray="3,3" 
+                          />
+
+                          {/* Flow direction indicators */}
+                          <path d="M 12,65 L 42,61 M 65,58 L 95,54" stroke="#eab308" strokeWidth="1.5" />
+                          <polygon points="42,61 36,58 37,64" fill="#eab308" stroke="none" />
+                          <polygon points="95,54 89,51 90,57" fill="#eab308" stroke="none" />
+
+                          {/* Dimensions label strings */}
+                          <line x1="23" y1="100" x2="88" y2="92" stroke="#818cf8" strokeWidth="0.8" strokeDasharray="3,3" />
+                          <text x="56" y="103" textAnchor="middle" fill="#818cf8" className="font-mono text-[6.5px] scale-y-110 font-bold">L = 6.0 Meters (DN {activeDn})</text>
+                        </svg>
+                      </div>
+
+                      {/* Technical details bottom summary block */}
+                      <div className="absolute bottom-3 inset-x-3 bg-neutral-900/90 border border-[#818cf8]/20 px-3 py-2 rounded-xl flex items-center justify-between text-[10px] font-sans text-white/95 shadow-md">
+                        <div className="flex items-center gap-1.5">
+                          <span className="relative flex h-1.5 w-1.5">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-400"></span>
+                          </span>
+                          <span className="font-extrabold uppercase font-mono text-[8px] tracking-wider text-indigo-300">{selectedDiClass === 'K7' ? 'LIGHT MAIN GRADING' : 'REINFORCED HEAVY WELL'}</span>
+                        </div>
+                        <span className="font-mono text-emerald-400 font-bold">Flow Factor C = {selectedDiClass === 'K7' ? '142' : '140'}</span>
+                      </div>
+                    </>
+                  )}
+                </div>
+
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-4 items-center justify-between mt-8 pt-6 border-t border-white/5 relative z-10">
+                <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-6">
+                  <div className="flex items-center gap-1">
+                    <div className="w-5 h-5 rounded bg-emerald-500/10 flex items-center justify-center border border-emerald-500/30">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-emerald-500"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                    </div>
+                    <span className="text-[10px] font-mono uppercase text-white/60 font-bold tracking-wider">
+                      Tyton Push-On Joint Approved
+                    </span>
+                  </div>
+                  <span className="uppercase text-[10px] font-mono font-bold tracking-widest text-[#818cf8] group-hover:text-amber-400 transition-colors underline decoration-indigo-400 flex items-center gap-2 cursor-pointer pointer-events-auto"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onSelectProduct(diProduct);
+                        }}
+                  >
+                    <Maximize2 className="w-3.5 h-3.5" /> Open IS 8329 Test Reports
+                  </span>
+                </div>
+                <div className="flex items-center gap-1 text-white text-xs font-sans tracking-wide cursor-pointer pointer-events-auto"
+                     onClick={(e) => {
+                       e.stopPropagation();
+                       onSelectProduct(diProduct);
+                     }}
+                >
+                  <span className="border-b border-white/10 group-hover:border-[#818cf8] pb-0.5 transition-colors font-bold uppercase text-[10px] tracking-widest">
+                    View Custom Quote Sheet
+                  </span>
+                  <ArrowRight className="w-4 h-4 group-hover:translate-x-2 transition-transform duration-300 text-[#818cf8]" />
+                </div>
+              </div>
+
+            </motion.div>
+          );
+        })()}
+
           </motion.div>
         )}
 
-        {/* 2. Industrial Motors (col-span-4) */}
+        {/* 3. Industrial Motors (col-span-4) */}
         {motorProduct && (
           <motion.div 
             variants={cardVariants}

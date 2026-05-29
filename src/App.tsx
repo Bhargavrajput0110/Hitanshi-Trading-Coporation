@@ -12,6 +12,8 @@ import SpecsDialog from './components/SpecsDialog';
 import QuoteRequestModal from './components/QuoteRequestModal';
 import AIChatbot from './components/AIChatbot';
 import Preloader from './components/Preloader';
+import OperationsHUD from './components/OperationsHUD';
+import InteractiveFactoryHub from './components/InteractiveFactoryHub';
 import { ALL_PRODUCTS } from './data';
 import { ShoppingBag, Check, Info, MessageCircle } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
@@ -140,6 +142,9 @@ export default function App() {
               onOpenEstimatorClick={() => handleScrollToSection('calculator-section')}
             />
 
+            {/* Dhule Corridor IoT Telemetry Indicator */}
+            <OperationsHUD />
+
             {/* Subtle, Full-Width Custom Section Divider */}
             <div className="w-full relative py-6 overflow-hidden select-none z-10 animate-[fadeIn_1.4s_ease-out]">
               <div className="absolute inset-0 flex items-center" aria-hidden="true">
@@ -181,6 +186,9 @@ export default function App() {
                 if (matched) setActiveInspectProduct(matched);
               }}
             />
+
+            {/* Interactive Virtual Factory Playground Panel */}
+            <InteractiveFactoryHub />
 
             {/* 4.1 Side-by-Side Product Specifications Comparison Table */}
             <ProductComparer 
